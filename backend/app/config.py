@@ -11,6 +11,8 @@ class Settings(BaseSettings):
     RAZORPAY_KEY_ID: str = Field(default="", env="RAZORPAY_KEY_ID")
     RAZORPAY_KEY_SECRET: str = Field(default="", env="RAZORPAY_KEY_SECRET")
     RAZORPAY_WEBHOOK_SECRET: str = Field(default="", env="RAZORPAY_WEBHOOK_SECRET")
+    OPENAI_API_KEY: str = Field(default="", env="OPENAI_API_KEY")
+    LLM_MODEL: str = Field(default="gpt-4o-mini", env="LLM_MODEL")
 
     class Config:
         env_file = ".env"
