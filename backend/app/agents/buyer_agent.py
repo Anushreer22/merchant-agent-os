@@ -94,21 +94,43 @@ class BuyerAgent:
     # Payment initiation
     # ------------------------------------------------------------------
 
-    def initiate_payment(self, negotiation_id: str, db: Session) -> dict:
-        """Load the negotiation and create a Razorpay order + payment link."""
+    def initiate_payment(
+        self,
+        negotiation_id: str,
+        db: Session,
+        x402_response: dict = None,
+    ) -> dict:
+        """
+        Initiate payment for a negotiation.
+
+        If an x402_response dict is provided (from the 402 endpoint), the buyer
+        acts on it directly — using the pre-created order and payment link —
+        instead of calling Razorpay again.
+        """
+        from fastapi import HTTPException
+
         negotiation = db.query(Negotiation).filter(
             Negotiation.negotiation_id == negotiation_id
         ).first()
         if not negotiation:
-            from fastapi import HTTPException
             raise HTTPException(status_code=404, detail="Negotiation not found")
 
         total = float(negotiation.final_amount)
         if not self.check_budget(total):
-            from fastapi import HTTPException
             raise HTTPException(
                 status_code=400,
                 detail=f"Final amount {total} exceeds buyer budget or single-transaction limit",
             )
+
+        if x402_response:
+            # Act on the pre-built 402 payload — no new Razorpay call needed.
+            return {
+                "order_id": x402_response.get("order_id"),
+                "payment_link": x402_response.get("payment_link_id"),
+                "short_url": x402_response.get("payment_link"),
+                "amount": x402_response.get("amount"),
+                "currency": x402_response.get("currency"),
+                "source": "x402",
+            }
 
         return create_order_and_link(db, negotiation)

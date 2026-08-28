@@ -11,6 +11,7 @@ from app.api.buyers import router as buyers_router
 from app.api.simulate import router as simulate_router
 from app.api.audit import router as audit_router
 from app.api.failures import router as failures_router
+from app.api.x402 import router as x402_router
 from app.config import settings
 
 app = FastAPI(
@@ -32,3 +33,4 @@ app.include_router(buyers_router, prefix=f"{settings.API_V1_PREFIX}/buyers", tag
 app.include_router(simulate_router, prefix=f"{settings.API_V1_PREFIX}/simulate", tags=["simulate"])
 app.include_router(audit_router, prefix=f"{settings.API_V1_PREFIX}/audit", tags=["audit"])
 app.include_router(failures_router, prefix=f"{settings.API_V1_PREFIX}/simulate/failures", tags=["failures"])
+app.include_router(x402_router, prefix=f"{settings.API_V1_PREFIX}/x402", tags=["x402"])
