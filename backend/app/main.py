@@ -8,6 +8,7 @@ from app.api.webhooks import router as webhooks_router
 from app.api.agent import router as agent_router
 from app.api.approvals import router as approvals_router
 from app.api.buyers import router as buyers_router
+from app.api.simulate import router as simulate_router
 from app.config import settings
 
 app = FastAPI(
@@ -26,3 +27,4 @@ app.include_router(webhooks_router, prefix=f"{settings.API_V1_PREFIX}/webhooks",
 app.include_router(agent_router, prefix=f"{settings.API_V1_PREFIX}/agent", tags=["agent"])
 app.include_router(approvals_router, prefix=f"{settings.API_V1_PREFIX}/approvals", tags=["approvals"])
 app.include_router(buyers_router, prefix=f"{settings.API_V1_PREFIX}/buyers", tags=["buyers"])
+app.include_router(simulate_router, prefix=f"{settings.API_V1_PREFIX}/simulate", tags=["simulate"])
