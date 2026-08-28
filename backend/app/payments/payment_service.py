@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from app.models.order import Order
 from app.models.payment_link import PaymentLink
 from app.payments.razorpay_client import get_razorpay_client
+from app.audit.ledger import append_audit_event
 
 logger = logging.getLogger(__name__)
 
@@ -86,6 +87,23 @@ def create_order_and_link(db: Session, negotiation, idempotency_key: str = None)
     db.commit()
     db.refresh(order)
     db.refresh(link)
+
+    try:
+        append_audit_event(
+            db,
+            actor="SYSTEM",
+            action_type="ORDER_CREATED",
+            payload={
+                "order_id": order.order_id,
+                "negotiation_id": negotiation.negotiation_id,
+                "amount": amount_rupees,
+                "currency": currency,
+            },
+            negotiation_id=negotiation.negotiation_id,
+            razorpay_entity_id=order.order_id,
+        )
+    except Exception:
+        pass
 
     return {
         "order_id": order.order_id,

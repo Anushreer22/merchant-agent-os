@@ -4,6 +4,7 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session
 from app.models.approval import Approval
 from app.models.negotiation import Negotiation
+from app.audit.ledger import append_audit_event
 
 
 def create_approval(db: Session, negotiation_id: str) -> Approval:
@@ -65,6 +66,25 @@ def decide_approval(
 
     db.commit()
     db.refresh(approval)
+
+    action_type = "APPROVAL_GRANTED" if decision == "APPROVED" else "APPROVAL_REJECTED"
+    try:
+        append_audit_event(
+            db,
+            actor="HUMAN",
+            action_type=action_type,
+            payload={
+                "approval_id": approval_id,
+                "negotiation_id": approval.negotiation_id,
+                "decision": decision,
+                "human_user_id": human_user_id,
+            },
+            policy_version=approval.policy_version,
+            negotiation_id=approval.negotiation_id,
+        )
+    except Exception:
+        pass
+
     return approval
 
 

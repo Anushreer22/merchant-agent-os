@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.models.webhook_event import WebhookEvent
 from app.models.order import Order
 from app.config import settings
+from app.audit.ledger import append_audit_event
 
 logger = logging.getLogger(__name__)
 
@@ -67,6 +68,23 @@ def process_webhook_event(db: Session, payload: dict, signature_header: str) -> 
 
     webhook_row.processed = True
     db.commit()
+
+    audit_action = {
+        "payment.captured": "PAYMENT_CAPTURED",
+        "order.paid": "PAYMENT_CAPTURED",
+        "payment.failed": "PAYMENT_FAILED",
+    }.get(event_type, "WEBHOOK_RECEIVED")
+    try:
+        append_audit_event(
+            db,
+            actor="WEBHOOK",
+            action_type=audit_action,
+            payload={"event_id": event_id, "event_type": event_type},
+            razorpay_entity_id=event_id,
+        )
+    except Exception:
+        pass
+
     return {"status": "processed", "event_id": event_id}
 
 

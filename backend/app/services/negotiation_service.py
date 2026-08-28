@@ -6,6 +6,7 @@ from app.models.product import Product
 from app.models.negotiation import Negotiation
 from app.services.policy_service import get_active_policy
 from app.policy.engine import evaluate_action, _effective_discount_limits, _rules
+from app.audit.ledger import append_audit_event
 
 
 def _build_response(neg: Negotiation, currency: str, counter_offer) -> dict:
@@ -92,5 +93,24 @@ def create_negotiation(
     db.add(neg)
     db.commit()
     db.refresh(neg)
+
+    try:
+        append_audit_event(
+            db,
+            actor="MERCHANT_AGENT",
+            action_type="NEGOTIATION_CREATED",
+            payload={
+                "negotiation_id": neg.negotiation_id,
+                "buyer_id": buyer_id,
+                "product_id": product_id,
+                "quantity": quantity,
+                "requested_discount": requested_discount,
+                "decision": neg.decision,
+            },
+            policy_version=neg.policy_version,
+            negotiation_id=neg.negotiation_id,
+        )
+    except Exception:
+        pass
 
     return _build_response(neg, product.currency, result["counter_offer"])
