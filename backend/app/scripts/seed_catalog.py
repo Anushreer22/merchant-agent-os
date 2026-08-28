@@ -3,6 +3,7 @@ from app.database import SessionLocal, create_tables
 from app.models.product import Product
 from app.models.catalog import CatalogVersion
 from app.models.policy import Policy
+from app.models.buyer import Buyer
 from app.services.policy_service import seed_default_policy
 
 def seed():
@@ -130,6 +131,7 @@ def seed():
         db.add(catalog)
         db.commit()
         seed_default_policy(db)
+        _seed_default_buyer(db)
         print("Seed completed: 5 products and catalog version 1.0 created.")
     except Exception as e:
         db.rollback()
@@ -139,3 +141,18 @@ def seed():
 
 if __name__ == "__main__":
     seed()
+
+
+def _seed_default_buyer(db) -> None:
+    if db.query(Buyer).count() > 0:
+        return
+    db.add(Buyer(
+        buyer_id="BUYER_DEFAULT_001",
+        name="Default AI Buyer",
+        budget=85000,
+        currency="INR",
+        max_single_transaction=85000,
+        preferred_categories=["subscriptions"],
+        negotiation_strategy="balanced",
+    ))
+    db.commit()
