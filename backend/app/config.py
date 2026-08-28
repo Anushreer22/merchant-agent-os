@@ -13,6 +13,8 @@ class Settings(BaseSettings):
     RAZORPAY_WEBHOOK_SECRET: str = Field(default="", env="RAZORPAY_WEBHOOK_SECRET")
     OPENAI_API_KEY: str = Field(default="", env="OPENAI_API_KEY")
     LLM_MODEL: str = Field(default="gpt-4o-mini", env="LLM_MODEL")
+    PAYMENT_RETRY_LIMIT: int = Field(default=2, env="PAYMENT_RETRY_LIMIT")
+    PAYMENT_RETRY_DELAY_SECONDS: int = Field(default=1, env="PAYMENT_RETRY_DELAY_SECONDS")
 
     class Config:
         env_file = ".env"
