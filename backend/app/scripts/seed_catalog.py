@@ -2,6 +2,8 @@
 from app.database import SessionLocal, create_tables
 from app.models.product import Product
 from app.models.catalog import CatalogVersion
+from app.models.policy import Policy
+from app.services.policy_service import seed_default_policy
 
 def seed():
     create_tables()
@@ -127,6 +129,7 @@ def seed():
         )
         db.add(catalog)
         db.commit()
+        seed_default_policy(db)
         print("Seed completed: 5 products and catalog version 1.0 created.")
     except Exception as e:
         db.rollback()
