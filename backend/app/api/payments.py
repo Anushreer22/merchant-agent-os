@@ -3,6 +3,8 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.negotiation import Negotiation
+from app.models.order import Order
+from app.models.payment_link import PaymentLink
 from app.payments.payment_service import create_order_and_link
 
 router = APIRouter()
@@ -20,7 +22,6 @@ def initiate_payment(request: PaymentInitiateRequest, db: Session = Depends(get_
     if not negotiation:
         raise HTTPException(status_code=404, detail="Negotiation not found")
 
-    # Only ALLOWED negotiations (or APPROVAL_REQUIRED that has been approved) can proceed
     if negotiation.decision not in ("ALLOWED",) and not (
         negotiation.decision == "APPROVAL_REQUIRED" and not negotiation.requires_human_approval
     ):
@@ -30,3 +31,36 @@ def initiate_payment(request: PaymentInitiateRequest, db: Session = Depends(get_
         )
 
     return create_order_and_link(db, negotiation)
+
+
+@router.get("/orders")
+def list_orders(skip: int = 0, limit: int = 50, db: Session = Depends(get_db)):
+    rows = db.query(Order).order_by(Order.id.desc()).offset(skip).limit(limit).all()
+    return [
+        {
+            "order_id": r.order_id,
+            "negotiation_id": r.negotiation_id,
+            "amount": float(r.amount),
+            "currency": r.currency,
+            "receipt": r.receipt,
+            "status": r.status,
+            "created_at": r.created_at,
+        }
+        for r in rows
+    ]
+
+
+@router.get("/links")
+def list_payment_links(skip: int = 0, limit: int = 50, db: Session = Depends(get_db)):
+    rows = db.query(PaymentLink).order_by(PaymentLink.id.desc()).offset(skip).limit(limit).all()
+    return [
+        {
+            "link_id": r.link_id,
+            "order_id": r.order_id,
+            "negotiation_id": r.negotiation_id,
+            "short_url": r.short_url,
+            "status": r.status,
+            "created_at": r.created_at,
+        }
+        for r in rows
+    ]
