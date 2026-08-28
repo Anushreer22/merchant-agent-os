@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   db:
     image: postgres:16-alpine
@@ -7,10 +5,10 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: merchant
-      POSTGRES_PASSWORD: merchant_password
+      POSTGRES_PASSWORD: merchant123
       POSTGRES_DB: merchant_agent_os
     ports:
-      - "5433:5432"
+      - "5434:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
