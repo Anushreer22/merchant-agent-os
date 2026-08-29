@@ -16,7 +16,11 @@ def get_active_policy(db: Session) -> Policy | None:
 
 
 def seed_default_policy(db: Session) -> None:
-    if db.query(Policy).count() > 0:
+    existing = db.query(Policy).first()
+    if existing:
+        if not existing.is_active:
+            existing.is_active = True
+            db.commit()
         return
     db.add(Policy(version="1.0", rules=DEFAULT_RULES, is_active=True))
     db.commit()

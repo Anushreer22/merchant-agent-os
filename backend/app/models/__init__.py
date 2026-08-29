@@ -1,3 +1,5 @@
+from app.models.product import Product
+from app.models.catalog import CatalogVersion
 from app.models.policy import Policy
 from app.models.negotiation import Negotiation
 from app.models.order import Order

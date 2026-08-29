@@ -10,6 +10,7 @@ def seed():
     create_tables()
     db = SessionLocal()
     try:
+        seed_default_policy(db)
         if db.query(Product).count() > 0:
             print("Products already seeded. Skipping.")
             return
@@ -130,7 +131,6 @@ def seed():
         )
         db.add(catalog)
         db.commit()
-        seed_default_policy(db)
         _seed_default_buyer(db)
         print("Seed completed: 5 products and catalog version 1.0 created.")
     except Exception as e:
@@ -138,9 +138,6 @@ def seed():
         raise e
     finally:
         db.close()
-
-if __name__ == "__main__":
-    seed()
 
 
 def _seed_default_buyer(db) -> None:
@@ -156,3 +153,7 @@ def _seed_default_buyer(db) -> None:
         negotiation_strategy="balanced",
     ))
     db.commit()
+
+
+if __name__ == "__main__":
+    seed()

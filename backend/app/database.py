@@ -15,4 +15,16 @@ def get_db():
 
 def create_tables():
     """Create all tables (development only). In production use migrations."""
+    # Import every model so SQLAlchemy registers them with Base.metadata
+    # before create_all is called.
+    import app.models.product          # noqa: F401
+    import app.models.catalog          # noqa: F401
+    import app.models.policy           # noqa: F401
+    import app.models.negotiation      # noqa: F401
+    import app.models.order            # noqa: F401
+    import app.models.payment_link     # noqa: F401
+    import app.models.webhook_event    # noqa: F401
+    import app.models.approval         # noqa: F401
+    import app.models.buyer            # noqa: F401
+    import app.models.audit            # noqa: F401
     Base.metadata.create_all(bind=engine)
