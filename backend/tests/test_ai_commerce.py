@@ -7,7 +7,12 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 from app.database import get_db
+from app.services.auth_service import get_current_user
 from app.services.ai_commerce_service import AICommerceOrchestrator
+
+
+_MOCK_USER = SimpleNamespace(id=1, email="buyer@test.com", full_name="Test",
+                              role="buyer", merchant_id=None)
 
 
 # ---------------------------------------------------------------------------
@@ -280,6 +285,7 @@ def test_api_simulate_allowed():
         neg_row=make_negotiation_row(),
     )
     app.dependency_overrides[get_db] = _override_db(db)
+    app.dependency_overrides[get_current_user] = lambda: _MOCK_USER
     try:
         with patch("app.services.ai_commerce_service.create_negotiation",
                    return_value=_neg_allowed()):
@@ -300,6 +306,7 @@ def test_api_simulate_allowed():
 def test_api_simulate_rejected():
     db = _make_db(buyer=make_buyer(), product=make_product())
     app.dependency_overrides[get_db] = _override_db(db)
+    app.dependency_overrides[get_current_user] = lambda: _MOCK_USER
     try:
         with patch("app.services.ai_commerce_service.create_negotiation",
                    return_value=_neg_rejected()):
@@ -318,6 +325,7 @@ def test_api_simulate_rejected():
 def test_api_simulate_buyer_not_found():
     db = _make_db(buyer=None)
     app.dependency_overrides[get_db] = _override_db(db)
+    app.dependency_overrides[get_current_user] = lambda: _MOCK_USER
     try:
         resp = TestClient(app).post(
             "/api/v1/simulate/ai-commerce",

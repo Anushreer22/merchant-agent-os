@@ -1,7 +1,8 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { fetchNegotiations, type Negotiation } from '../api/client'
-import { Spinner, ErrorMsg, Card, PageHeader, EmptyState } from '../components/ui'
+import { Spinner, ErrorMsg, Card, PageHeader } from '../components/ui'
 import { Badge } from '../components/Badge'
 
 function fmt(d: string) {
@@ -62,13 +63,28 @@ function DetailModal({ neg, onClose }: { neg: Negotiation; onClose: () => void }
 export function Negotiations() {
   const { data, isLoading, error } = useQuery({ queryKey: ['negotiations'], queryFn: fetchNegotiations })
   const [selected, setSelected] = useState<Negotiation | null>(null)
+  const navigate = useNavigate()
 
   return (
     <div>
       <PageHeader title="Negotiations" subtitle="All AI-to-AI and manual negotiations" />
       {isLoading && <Spinner />}
       {error && <ErrorMsg msg="Failed to load negotiations" />}
-      {data?.length === 0 && <EmptyState label="No negotiations yet" />}
+      {data?.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-16 text-slate-400">
+          <svg className="mb-3 h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+              d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+          </svg>
+          <p className="text-sm mb-3">No negotiations yet</p>
+          <button
+            onClick={() => navigate('/buyer-simulator')}
+            className="rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-700 transition-colors"
+          >
+            Start your first purchase →
+          </button>
+        </div>
+      )}
       {data && data.length > 0 && (
         <Card>
           <div className="overflow-x-auto">

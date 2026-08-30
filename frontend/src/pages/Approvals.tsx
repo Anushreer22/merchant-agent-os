@@ -1,7 +1,8 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { fetchApprovals, decideApproval } from '../api/client'
-import { Spinner, ErrorMsg, Card, PageHeader, EmptyState } from '../components/ui'
+import { Spinner, ErrorMsg, Card, PageHeader } from '../components/ui'
 import { Badge } from '../components/Badge'
 
 function fmt(d: string | null) {
@@ -10,6 +11,7 @@ function fmt(d: string | null) {
 
 export function Approvals() {
   const qc = useQueryClient()
+  const navigate = useNavigate()
   const { data, isLoading, error } = useQuery({ queryKey: ['approvals'], queryFn: fetchApprovals })
   const [deciding, setDeciding] = useState<string | null>(null)
 
@@ -23,14 +25,30 @@ export function Approvals() {
       <PageHeader title="Approvals" subtitle="Human-in-the-loop approval queue" />
       {isLoading && <Spinner />}
       {error && <ErrorMsg msg="Failed to load approvals" />}
-      {data?.length === 0 && <EmptyState label="No approvals pending" />}
+
+      {data?.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-16 text-slate-400">
+          <svg className="mb-3 h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <p className="text-sm mb-3">No approvals pending — all clear!</p>
+          <button
+            onClick={() => navigate('/negotiations')}
+            className="rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-700 transition-colors"
+          >
+            View negotiations →
+          </button>
+        </div>
+      )}
+
       {data && data.length > 0 && (
         <Card>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-100 text-left">
-                  {['Approval ID','Negotiation','Buyer','Product','Amount','Req. Disc','Proposed Disc','Status','Created','Actions'].map(h => (
+                  {['Approval ID', 'Negotiation', 'Buyer', 'Product', 'Amount', 'Req. Disc', 'Proposed Disc', 'Status', 'Created', 'Actions'].map(h => (
                     <th key={h} className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">{h}</th>
                   ))}
                 </tr>
@@ -51,6 +69,7 @@ export function Approvals() {
                       {a.status === 'PENDING' ? (
                         <div className="flex gap-2">
                           <button
+                            title="Approve this negotiation to allow the buyer to proceed to payment"
                             onClick={() => { setDeciding(a.approval_id); mutation.mutate({ id: a.approval_id, decision: 'APPROVED' }) }}
                             disabled={mutation.isPending && deciding === a.approval_id}
                             className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700 disabled:opacity-50 transition-colors"
@@ -58,6 +77,7 @@ export function Approvals() {
                             Approve
                           </button>
                           <button
+                            title="Reject this negotiation — the buyer's offer will not proceed"
                             onClick={() => { setDeciding(a.approval_id); mutation.mutate({ id: a.approval_id, decision: 'REJECTED' }) }}
                             disabled={mutation.isPending && deciding === a.approval_id}
                             className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700 disabled:opacity-50 transition-colors"

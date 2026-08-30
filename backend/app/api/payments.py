@@ -4,10 +4,12 @@ from slowapi import Limiter
 from slowapi.util import get_remote_address
 from sqlalchemy.orm import Session
 from app.database import get_db
+from app.models.user import User
 from app.models.negotiation import Negotiation
 from app.models.order import Order
 from app.models.payment_link import PaymentLink
 from app.payments.payment_service import create_order_and_link
+from app.services.auth_service import require_role
 
 router = APIRouter()
 limiter = Limiter(key_func=get_remote_address)
@@ -19,7 +21,9 @@ class PaymentInitiateRequest(BaseModel):
 
 @router.post("/initiate", status_code=201)
 @limiter.limit("20/minute")
-def initiate_payment(request: Request, body: PaymentInitiateRequest, db: Session = Depends(get_db)):
+def initiate_payment(request: Request, body: PaymentInitiateRequest,
+                     db: Session = Depends(get_db),
+                     _: User = Depends(require_role("buyer", "merchant", "admin"))):
     negotiation = db.query(Negotiation).filter(
         Negotiation.negotiation_id == body.negotiation_id
     ).first()
@@ -38,7 +42,8 @@ def initiate_payment(request: Request, body: PaymentInitiateRequest, db: Session
 
 
 @router.get("/orders")
-def list_orders(skip: int = 0, limit: int = 50, db: Session = Depends(get_db)):
+def list_orders(skip: int = 0, limit: int = 50, db: Session = Depends(get_db),
+                _: User = Depends(require_role("merchant", "admin"))):
     rows = db.query(Order).order_by(Order.id.desc()).offset(skip).limit(limit).all()
     return [
         {
@@ -55,7 +60,8 @@ def list_orders(skip: int = 0, limit: int = 50, db: Session = Depends(get_db)):
 
 
 @router.get("/links")
-def list_payment_links(skip: int = 0, limit: int = 50, db: Session = Depends(get_db)):
+def list_payment_links(skip: int = 0, limit: int = 50, db: Session = Depends(get_db),
+                       _: User = Depends(require_role("merchant", "admin"))):
     rows = db.query(PaymentLink).order_by(PaymentLink.id.desc()).offset(skip).limit(limit).all()
     return [
         {

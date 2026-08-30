@@ -34,6 +34,7 @@ export function Audit() {
         <button
           onClick={verify}
           disabled={verifying}
+          title="Check if the audit ledger hash chain has been tampered with"
           className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700 disabled:opacity-50 transition-colors"
         >
           {verifying ? 'Verifying…' : 'VERIFY CHAIN'}

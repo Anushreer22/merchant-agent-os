@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
+import { useNavigate } from 'react-router-dom'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 import { fetchStats } from '../api/client'
+import { useAuth } from '../context/AuthContext'
 import { Spinner, ErrorMsg, Card, PageHeader } from '../components/ui'
 
 const CHART_DATA = [
@@ -25,12 +27,99 @@ function StatCard({ label, value, sub, accent = false }: {
   )
 }
 
+interface WelcomeStep { icon: string; text: string }
+
+function WelcomeCard({ title, subtitle, steps, cta, ctaPath, accent }: {
+  title: string
+  subtitle: string
+  steps: WelcomeStep[]
+  cta: string
+  ctaPath: string
+  accent: string
+}) {
+  const navigate = useNavigate()
+  return (
+    <Card className={`mb-6 p-5 border-l-4 ${accent}`}>
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex-1">
+          <p className="text-base font-semibold text-slate-900">{title}</p>
+          <p className="mt-0.5 text-sm text-slate-500">{subtitle}</p>
+          <ol className="mt-3 space-y-1.5">
+            {steps.map((s, i) => (
+              <li key={i} className="flex items-start gap-2 text-sm text-slate-700">
+                <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-600">
+                  {i + 1}
+                </span>
+                <span>{s.text}</span>
+              </li>
+            ))}
+          </ol>
+        </div>
+        <button
+          onClick={() => navigate(ctaPath)}
+          className="shrink-0 rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700 transition-colors whitespace-nowrap"
+        >
+          {cta}
+        </button>
+      </div>
+    </Card>
+  )
+}
+
+const WELCOME: Record<string, {
+  title: string; subtitle: string; steps: WelcomeStep[]
+  cta: string; ctaPath: string; accent: string
+}> = {
+  buyer: {
+    title: 'Welcome! Here\'s how to make a purchase',
+    subtitle: 'Use the AI-powered Buyer Simulator to negotiate and pay in seconds.',
+    steps: [
+      { icon: '1', text: 'Go to Buyer Simulator and enter your Buyer ID and Product ID.' },
+      { icon: '2', text: 'Set your desired discount (0–30%) and click Start Purchase.' },
+      { icon: '3', text: 'The AI agents negotiate. Check Orders to see your payment status.' },
+    ],
+    cta: 'Start a Purchase →',
+    ctaPath: '/buyer-simulator',
+    accent: 'border-emerald-500',
+  },
+  merchant: {
+    title: 'Manage negotiations, approvals, and payments',
+    subtitle: 'Review deals that need your decision and monitor all platform activity.',
+    steps: [
+      { icon: '1', text: 'Check Approvals for any pending deals that exceed auto-approval limits.' },
+      { icon: '2', text: 'Review Negotiations to see all AI-to-AI commerce activity.' },
+      { icon: '3', text: 'Use Audit Ledger → Verify Chain to confirm data integrity.' },
+    ],
+    cta: 'Review Approvals →',
+    ctaPath: '/approvals',
+    accent: 'border-blue-500',
+  },
+  admin: {
+    title: 'You have full access — monitor and control everything',
+    subtitle: 'Oversee all platform activity, manage policies, and verify audit integrity.',
+    steps: [
+      { icon: '1', text: 'Dashboard shows live stats: revenue, negotiations, and pending approvals.' },
+      { icon: '2', text: 'Use Settings to configure platform options.' },
+      { icon: '3', text: 'Audit Ledger provides a tamper-evident record of every action.' },
+    ],
+    cta: 'View Audit Ledger →',
+    ctaPath: '/audit',
+    accent: 'border-purple-500',
+  },
+}
+
 export function Dashboard() {
+  const { user } = useAuth()
+  const role = user?.role ?? 'buyer'
+  const welcome = WELCOME[role] ?? WELCOME.buyer
+
   const { data, isLoading, error } = useQuery({ queryKey: ['stats'], queryFn: fetchStats, refetchInterval: 30_000 })
 
   return (
     <div>
       <PageHeader title="Dashboard" subtitle="Real-time overview of your AI commerce platform" />
+
+      <WelcomeCard {...welcome} />
 
       {isLoading && <Spinner />}
       {error && <ErrorMsg msg="Could not load stats — is the backend running?" />}
@@ -52,8 +141,8 @@ export function Dashboard() {
 
       {!data && !isLoading && (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-          {['Total Negotiations','Successful Payments','Pending Approvals','Total Orders',
-            'Revenue (INR)','Avg Discount','Allowed','Audit Events'].map(l => (
+          {['Total Negotiations', 'Successful Payments', 'Pending Approvals', 'Total Orders',
+            'Revenue (INR)', 'Avg Discount', 'Allowed', 'Audit Events'].map(l => (
             <Card key={l} className="p-5 animate-pulse">
               <div className="h-3 w-24 rounded bg-slate-200" />
               <div className="mt-3 h-8 w-16 rounded bg-slate-200" />

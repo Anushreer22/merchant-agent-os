@@ -1,8 +1,10 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from app.database import get_db
+from app.models.user import User
 from app.models.audit import AuditEvent
 from app.audit.ledger import validate_audit_chain
+from app.services.auth_service import require_role
 
 router = APIRouter()
 
@@ -12,6 +14,7 @@ def list_audit_events(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=500),
     db: Session = Depends(get_db),
+    _: User = Depends(require_role("merchant", "admin")),
 ):
     events = db.query(AuditEvent).order_by(AuditEvent.id).offset(skip).limit(limit).all()
     return [
@@ -33,5 +36,6 @@ def list_audit_events(
 
 
 @router.get("/verify")
-def verify_audit_chain(db: Session = Depends(get_db)):
+def verify_audit_chain(db: Session = Depends(get_db),
+                       _: User = Depends(require_role("merchant", "admin"))):
     return validate_audit_chain(db)

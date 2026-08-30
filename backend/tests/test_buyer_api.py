@@ -6,6 +6,10 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 from app.database import get_db
+from app.services.auth_service import get_current_user
+
+_MOCK_USER = SimpleNamespace(id=1, email="buyer@test.com", full_name="Test",
+                              role="buyer", merchant_id=None)
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -120,6 +124,7 @@ def _override_db(db):
 def test_purchase_allowed_initiates_payment():
     db = _make_mock_db(buyer=make_buyer(), product=make_product(), neg_row=make_negotiation_row())
     app.dependency_overrides[get_db] = _override_db(db)
+    app.dependency_overrides[get_current_user] = lambda: _MOCK_USER
     try:
         with patch("app.api.buyers.create_negotiation", return_value=NEG_ALLOWED):
             with patch("app.api.buyers.create_order_and_link", return_value=PAYMENT_RESULT):
@@ -139,6 +144,7 @@ def test_purchase_allowed_initiates_payment():
 def test_purchase_rejected_returns_counter_offer():
     db = _make_mock_db(buyer=make_buyer(), product=make_product())
     app.dependency_overrides[get_db] = _override_db(db)
+    app.dependency_overrides[get_current_user] = lambda: _MOCK_USER
     try:
         with patch("app.api.buyers.create_negotiation", return_value=NEG_REJECTED):
             resp = TestClient(app).post(
@@ -157,6 +163,7 @@ def test_purchase_rejected_returns_counter_offer():
 def test_purchase_budget_exceeded():
     db = _make_mock_db(buyer=make_buyer(budget=100, max_single_transaction=100), product=make_product())
     app.dependency_overrides[get_db] = _override_db(db)
+    app.dependency_overrides[get_current_user] = lambda: _MOCK_USER
     try:
         with patch("app.api.buyers.create_negotiation", return_value=NEG_ALLOWED):
             resp = TestClient(app).post(
@@ -175,6 +182,7 @@ def test_purchase_budget_exceeded():
 def test_purchase_approval_required():
     db = _make_mock_db(buyer=make_buyer(), product=make_product())
     app.dependency_overrides[get_db] = _override_db(db)
+    app.dependency_overrides[get_current_user] = lambda: _MOCK_USER
     try:
         with patch("app.api.buyers.create_negotiation", return_value=NEG_APPROVAL_REQUIRED):
             resp = TestClient(app).post(
@@ -193,6 +201,7 @@ def test_purchase_approval_required():
 def test_purchase_buyer_not_found():
     db = _make_mock_db(buyer=None)
     app.dependency_overrides[get_db] = _override_db(db)
+    app.dependency_overrides[get_current_user] = lambda: _MOCK_USER
     try:
         resp = TestClient(app).post(
             "/api/v1/buyers/NONEXISTENT/purchase",
@@ -207,6 +216,7 @@ def test_purchase_buyer_not_found():
 def test_purchase_product_not_found():
     db = _make_mock_db(buyer=make_buyer(), product=None)
     app.dependency_overrides[get_db] = _override_db(db)
+    app.dependency_overrides[get_current_user] = lambda: _MOCK_USER
     try:
         resp = TestClient(app).post(
             "/api/v1/buyers/BUYER_TEST_001/purchase",

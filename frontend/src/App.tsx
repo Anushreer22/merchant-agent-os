@@ -16,6 +16,7 @@ import { Payments } from './pages/Payments'
 import { Audit } from './pages/Audit'
 import { Policies } from './pages/Policies'
 import { Settings } from './pages/Settings'
+import { Help } from './pages/Help'
 
 const qc = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
@@ -27,28 +28,41 @@ export default function App() {
       <AuthProvider>
         <BrowserRouter>
           <Routes>
-            {/* Public routes */}
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
 
-            {/* Protected routes */}
             <Route element={<ProtectedRoute />}>
               <Route element={<Layout />}>
+                {/* All roles */}
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/catalog" element={<Catalog />} />
-                <Route path="/buyer-simulator" element={<BuyerSimulator />} />
-                <Route path="/negotiations" element={<Negotiations />} />
-                <Route path="/approvals" element={<Approvals />} />
+                <Route path="/help" element={<Help />} />
+
+                {/* Buyer + admin */}
+                <Route element={<ProtectedRoute allowedRoles={['buyer', 'admin']} />}>
+                  <Route path="/buyer-simulator" element={<BuyerSimulator />} />
+                </Route>
+
+                {/* Buyer + merchant + admin */}
                 <Route path="/orders" element={<Orders />} />
-                <Route path="/payments" element={<Payments />} />
-                <Route path="/audit" element={<Audit />} />
-                <Route path="/policies" element={<Policies />} />
-                <Route path="/settings" element={<Settings />} />
+
+                {/* Merchant + admin */}
+                <Route element={<ProtectedRoute allowedRoles={['merchant', 'admin']} />}>
+                  <Route path="/negotiations" element={<Negotiations />} />
+                  <Route path="/approvals" element={<Approvals />} />
+                  <Route path="/payments" element={<Payments />} />
+                  <Route path="/audit" element={<Audit />} />
+                  <Route path="/policies" element={<Policies />} />
+                </Route>
+
+                {/* Admin only */}
+                <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
+                  <Route path="/settings" element={<Settings />} />
+                </Route>
               </Route>
             </Route>
 
-            {/* Fallback */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </BrowserRouter>

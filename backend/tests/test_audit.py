@@ -6,6 +6,10 @@ from fastapi.testclient import TestClient
 from app.audit.hashing import canonicalize_payload, compute_sha256, compute_event_hash
 from app.audit.ledger import append_audit_event, validate_audit_chain
 from app.models.audit import AuditEvent
+from app.services.auth_service import get_current_user
+
+_MOCK_USER = SimpleNamespace(id=1, email="merchant@test.com", full_name="Test",
+                              role="merchant", merchant_id=None)
 
 
 # ---------------------------------------------------------------------------
@@ -217,7 +221,6 @@ def test_api_list_audit_events():
 
     events = _build_valid_chain(2)
 
-    # Make query().order_by().offset().limit().all() work
     db = MagicMock()
     q = MagicMock()
     order_mock = MagicMock()
@@ -230,7 +233,6 @@ def test_api_list_audit_events():
     q.order_by.return_value = order_mock
     db.query.return_value = q
 
-    # Add required attributes to SimpleNamespace events for serialization
     for e in events:
         e.timestamp = None
         e.policy_version = None
@@ -239,6 +241,7 @@ def test_api_list_audit_events():
         e.created_at = None
 
     app.dependency_overrides[get_db] = lambda: db
+    app.dependency_overrides[get_current_user] = lambda: _MOCK_USER
     client = TestClient(app)
     response = client.get("/api/v1/audit/")
     app.dependency_overrides.clear()
@@ -263,6 +266,7 @@ def test_api_verify_valid_chain():
     db.query.return_value = q
 
     app.dependency_overrides[get_db] = lambda: db
+    app.dependency_overrides[get_current_user] = lambda: _MOCK_USER
     client = TestClient(app)
     response = client.get("/api/v1/audit/verify")
     app.dependency_overrides.clear()
@@ -290,6 +294,7 @@ def test_api_verify_invalid_chain():
     db.query.return_value = q
 
     app.dependency_overrides[get_db] = lambda: db
+    app.dependency_overrides[get_current_user] = lambda: _MOCK_USER
     client = TestClient(app)
     response = client.get("/api/v1/audit/verify")
     app.dependency_overrides.clear()
