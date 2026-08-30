@@ -27,4 +27,5 @@ def create_tables():
     import app.models.approval         # noqa: F401
     import app.models.buyer            # noqa: F401
     import app.models.audit            # noqa: F401
+    import app.models.user             # noqa: F401
     Base.metadata.create_all(bind=engine)

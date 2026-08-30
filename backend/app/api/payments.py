@@ -1,5 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.negotiation import Negotiation
@@ -8,6 +10,7 @@ from app.models.payment_link import PaymentLink
 from app.payments.payment_service import create_order_and_link
 
 router = APIRouter()
+limiter = Limiter(key_func=get_remote_address)
 
 
 class PaymentInitiateRequest(BaseModel):
@@ -15,9 +18,10 @@ class PaymentInitiateRequest(BaseModel):
 
 
 @router.post("/initiate", status_code=201)
-def initiate_payment(request: PaymentInitiateRequest, db: Session = Depends(get_db)):
+@limiter.limit("20/minute")
+def initiate_payment(request: Request, body: PaymentInitiateRequest, db: Session = Depends(get_db)):
     negotiation = db.query(Negotiation).filter(
-        Negotiation.negotiation_id == request.negotiation_id
+        Negotiation.negotiation_id == body.negotiation_id
     ).first()
     if not negotiation:
         raise HTTPException(status_code=404, detail="Negotiation not found")

@@ -1,7 +1,19 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi import Depends
+from fastapi.responses import Response
+from starlette.middleware.base import BaseHTTPMiddleware
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 from sqlalchemy.orm import Session
+from sqlalchemy import func as sqlfunc
+
+from app.config import settings
+from app.database import get_db
+from app.models.negotiation import Negotiation
+from app.models.order import Order
+from app.models.approval import Approval
+from app.models.audit import AuditEvent
 from app.api.health import router as health_router
 from app.api.catalog import router as catalog_router
 from app.api.policy import router as policy_router
@@ -12,10 +24,24 @@ from app.api.agent import router as agent_router
 from app.api.approvals import router as approvals_router
 from app.api.buyers import router as buyers_router
 from app.api.simulate import router as simulate_router
+from app.api.simulate_webhook import router as simulate_webhook_router
 from app.api.audit import router as audit_router
 from app.api.failures import router as failures_router
 from app.api.x402 import router as x402_router
-from app.config import settings
+from app.api.auth import router as auth_router
+
+limiter = Limiter(key_func=get_remote_address, default_limits=["100/minute"])
+
+
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        response: Response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["Content-Security-Policy"] = "default-src 'self'"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        return response
+
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -24,15 +50,23 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000"],
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 app.include_router(health_router, prefix=f"{settings.API_V1_PREFIX}/health", tags=["health"])
+app.include_router(auth_router, prefix=f"{settings.API_V1_PREFIX}/auth", tags=["auth"])
 app.include_router(catalog_router, prefix=f"{settings.API_V1_PREFIX}/catalog", tags=["catalog"])
 app.include_router(policy_router, prefix=f"{settings.API_V1_PREFIX}/policy", tags=["policy"])
 app.include_router(negotiations_router, prefix=f"{settings.API_V1_PREFIX}/negotiations", tags=["negotiations"])
@@ -42,19 +76,10 @@ app.include_router(agent_router, prefix=f"{settings.API_V1_PREFIX}/agent", tags=
 app.include_router(approvals_router, prefix=f"{settings.API_V1_PREFIX}/approvals", tags=["approvals"])
 app.include_router(buyers_router, prefix=f"{settings.API_V1_PREFIX}/buyers", tags=["buyers"])
 app.include_router(simulate_router, prefix=f"{settings.API_V1_PREFIX}/simulate", tags=["simulate"])
+app.include_router(simulate_webhook_router, prefix=f"{settings.API_V1_PREFIX}/simulate", tags=["simulate"])
 app.include_router(audit_router, prefix=f"{settings.API_V1_PREFIX}/audit", tags=["audit"])
 app.include_router(failures_router, prefix=f"{settings.API_V1_PREFIX}/simulate/failures", tags=["failures"])
 app.include_router(x402_router, prefix=f"{settings.API_V1_PREFIX}/x402", tags=["x402"])
-
-
-# ---------------------------------------------------------------------------
-# Stats endpoint — aggregates counts for the dashboard
-# ---------------------------------------------------------------------------
-from app.database import get_db
-from app.models.negotiation import Negotiation
-from app.models.order import Order
-from app.models.approval import Approval
-from app.models.audit import AuditEvent
 
 
 @app.get(f"{settings.API_V1_PREFIX}/stats", tags=["stats"])
@@ -67,7 +92,6 @@ def get_stats(db: Session = Depends(get_db)):
     paid_orders = db.query(Order).filter(Order.status == "paid").count()
     audit_count = db.query(AuditEvent).count()
 
-    from sqlalchemy import func as sqlfunc
     revenue_row = db.query(sqlfunc.sum(Order.amount)).filter(Order.status == "paid").scalar()
     revenue = float(revenue_row or 0)
 

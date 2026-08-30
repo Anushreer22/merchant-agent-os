@@ -1,13 +1,17 @@
 import json
 from fastapi import APIRouter, Depends, HTTPException, Request
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.payments.webhook_service import process_webhook_event
 
 router = APIRouter()
+limiter = Limiter(key_func=get_remote_address)
 
 
 @router.post("/razorpay", status_code=200)
+@limiter.limit("10/minute")
 async def razorpay_webhook(request: Request, db: Session = Depends(get_db)):
     body = await request.body()
     signature = request.headers.get("X-Razorpay-Signature", "")

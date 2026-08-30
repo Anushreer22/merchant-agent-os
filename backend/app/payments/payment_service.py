@@ -30,7 +30,7 @@ def create_order_and_link(db: Session, negotiation, idempotency_key: str = None)
     # Razorpay expects amount in paise (smallest currency unit)
     amount_paise = int(round(amount_rupees * 100))
     currency = getattr(negotiation, "currency", "INR") or "INR"
-    receipt = f"rcpt_{negotiation.negotiation_id}"
+    receipt = f"rcpt_{negotiation.negotiation_id[:35]}"
 
     metadata = {
         "negotiation_id": negotiation.negotiation_id,

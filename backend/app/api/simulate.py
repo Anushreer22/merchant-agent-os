@@ -16,7 +16,7 @@ class AICommerceRequest(BaseModel):
 
 
 @router.post("/ai-commerce")
-def simulate_ai_commerce(request: AICommerceRequest, db: Session = Depends(get_db)):
+async def run_ai_commerce(request: AICommerceRequest, db: Session = Depends(get_db)):
     return _orchestrator.run_transaction(
         db=db,
         buyer_id=request.buyer_id,

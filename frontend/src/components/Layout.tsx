@@ -1,7 +1,9 @@
-import { NavLink, Outlet } from 'react-router-dom'
+import { useState } from 'react'
+import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
 
-const NAV = [
-  { to: '/',                label: 'Dashboard',       icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' },
+const NAV_BASE = [
+  { to: '/dashboard',       label: 'Dashboard',       icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' },
   { to: '/catalog',         label: 'Catalog',          icon: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4' },
   { to: '/buyer-simulator', label: 'Buyer Simulator',  icon: 'M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z' },
   { to: '/negotiations',    label: 'Negotiations',     icon: 'M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z' },
@@ -13,7 +15,22 @@ const NAV = [
   { to: '/settings',        label: 'Settings',         icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z' },
 ]
 
+const ROLE_COLORS: Record<string, string> = {
+  admin: 'bg-purple-50 text-purple-700 ring-purple-200',
+  merchant: 'bg-blue-50 text-blue-700 ring-blue-200',
+  buyer: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
+}
+
 export function Layout() {
+  const { user, logout } = useAuth()
+  const navigate = useNavigate()
+  const [menuOpen, setMenuOpen] = useState(false)
+
+  const handleLogout = () => {
+    logout()
+    navigate('/login')
+  }
+
   return (
     <div className="flex h-screen bg-slate-50">
       {/* Sidebar */}
@@ -21,8 +38,7 @@ export function Layout() {
         <div className="flex h-16 items-center gap-2.5 border-b border-slate-200 px-5">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600">
             <svg className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                d="M13 10V3L4 14h7v7l9-11h-7z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
             </svg>
           </div>
           <span className="text-sm font-semibold text-slate-900 leading-tight">
@@ -30,11 +46,10 @@ export function Layout() {
           </span>
         </div>
         <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
-          {NAV.map(({ to, label, icon }) => (
+          {NAV_BASE.map(({ to, label, icon }) => (
             <NavLink
               key={to}
               to={to}
-              end={to === '/'}
               className={({ isActive }) =>
                 `flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
                   isActive
@@ -64,7 +79,44 @@ export function Layout() {
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
               Live
             </span>
-            <span className="text-sm text-slate-500">v0.1.0</span>
+            {user && (
+              <div className="relative">
+                <button
+                  onClick={() => setMenuOpen(o => !o)}
+                  className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-1.5 text-sm hover:bg-slate-50 transition-colors"
+                >
+                  <div className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white">
+                    {user.full_name.charAt(0).toUpperCase()}
+                  </div>
+                  <span className="max-w-[100px] truncate text-slate-700">{user.full_name}</span>
+                  <span className={`rounded-full px-2 py-0.5 text-xs font-medium ring-1 ${ROLE_COLORS[user.role] ?? 'bg-slate-50 text-slate-600 ring-slate-200'}`}>
+                    {user.role}
+                  </span>
+                  <svg className="h-3.5 w-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                {menuOpen && (
+                  <div className="absolute right-0 top-full mt-1 w-48 rounded-xl border border-slate-200 bg-white py-1 shadow-lg z-50">
+                    <div className="border-b border-slate-100 px-4 py-2">
+                      <p className="text-xs font-medium text-slate-900 truncate">{user.email}</p>
+                    </div>
+                    {user.role === 'admin' && (
+                      <NavLink to="/settings" onClick={() => setMenuOpen(false)}
+                        className="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">
+                        Settings
+                      </NavLink>
+                    )}
+                    <button
+                      onClick={handleLogout}
+                      className="flex w-full items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                    >
+                      Sign Out
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </header>
         <main className="flex-1 overflow-y-auto p-6">

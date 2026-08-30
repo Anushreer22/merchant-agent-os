@@ -62,58 +62,46 @@ def make_approval(approval_id="APR-test-001"):
     )
 
 
-# Merchant agent responses for each decision branch
-def _merchant_allowed(negotiation_id="neg-001", final_price=900.0):
+# create_negotiation return shapes
+def _neg_allowed(negotiation_id="neg-001", final_price=900.0):
     return {
-        "intent": {"product_id": "SUB_PRO_001", "quantity": 1, "requested_discount": 0.10},
-        "policy_result": {
-            "decision": "ALLOWED",
-            "requires_human_approval": False,
-            "maximum_allowed_discount": 0.15,
-            "counter_offer": None,
-            "policy_version": "1.0",
-            "reason_code": "WITHIN_POLICY",
-            "negotiation_id": negotiation_id,
-            "final_price": final_price,
-            "currency": "INR",
-        },
-        "reply": "Your discount has been approved.",
+        "decision": "ALLOWED",
+        "requires_human_approval": False,
+        "maximum_allowed_discount": 0.15,
+        "counter_offer": None,
+        "policy_version": "1.0",
+        "reason_code": "WITHIN_POLICY",
+        "negotiation_id": negotiation_id,
+        "final_price": final_price,
+        "currency": "INR",
     }
 
 
-def _merchant_approval_required(negotiation_id="neg-002"):
+def _neg_approval_required(negotiation_id="neg-002"):
     return {
-        "intent": {"product_id": "SUB_PRO_001", "quantity": 1, "requested_discount": 0.18},
-        "policy_result": {
-            "decision": "APPROVAL_REQUIRED",
-            "requires_human_approval": True,
-            "maximum_allowed_discount": 0.15,
-            "counter_offer": {"discount": 0.15, "final_unit_price": 850.0},
-            "policy_version": "1.0",
-            "reason_code": "APPROVAL_REQUIRED",
-            "negotiation_id": negotiation_id,
-            "final_price": 820.0,
-            "currency": "INR",
-        },
-        "reply": "This requires approval.",
+        "decision": "APPROVAL_REQUIRED",
+        "requires_human_approval": True,
+        "maximum_allowed_discount": 0.15,
+        "counter_offer": {"discount": 0.15, "final_unit_price": 850.0},
+        "policy_version": "1.0",
+        "reason_code": "APPROVAL_REQUIRED",
+        "negotiation_id": negotiation_id,
+        "final_price": 820.0,
+        "currency": "INR",
     }
 
 
-def _merchant_rejected(negotiation_id="neg-003"):
+def _neg_rejected(negotiation_id="neg-003"):
     return {
-        "intent": {"product_id": "SUB_PRO_001", "quantity": 1, "requested_discount": 0.30},
-        "policy_result": {
-            "decision": "REJECTED",
-            "requires_human_approval": False,
-            "maximum_allowed_discount": 0.15,
-            "counter_offer": {"discount": 0.15, "final_unit_price": 850.0},
-            "policy_version": "1.0",
-            "reason_code": "DISCOUNT_EXCEEDS_LIMIT",
-            "negotiation_id": negotiation_id,
-            "final_price": 850.0,
-            "currency": "INR",
-        },
-        "reply": "Offer rejected.",
+        "decision": "REJECTED",
+        "requires_human_approval": False,
+        "maximum_allowed_discount": 0.15,
+        "counter_offer": {"discount": 0.15, "final_unit_price": 850.0},
+        "policy_version": "1.0",
+        "reason_code": "DISCOUNT_EXCEEDS_LIMIT",
+        "negotiation_id": negotiation_id,
+        "final_price": 850.0,
+        "currency": "INR",
     }
 
 
@@ -166,8 +154,8 @@ def test_full_flow_allowed_payment_pending():
         product=make_product(),
         neg_row=make_negotiation_row(final_amount=900.0),
     )
-    with patch("app.services.ai_commerce_service._merchant_agent.negotiate",
-               return_value=_merchant_allowed()):
+    with patch("app.services.ai_commerce_service.create_negotiation",
+               return_value=_neg_allowed()):
         with patch("app.services.ai_commerce_service.BuyerAgent.initiate_payment",
                    return_value=PAYMENT_RESULT):
             result = orchestrator.run_transaction(db, "BUYER_001", "SUB_PRO_001", 1, 0.10)
@@ -187,8 +175,8 @@ def test_full_flow_allowed_payment_pending():
 def test_flow_approval_required_no_payment():
     approval = make_approval()
     db = _make_db(buyer=make_buyer(), product=make_product())
-    with patch("app.services.ai_commerce_service._merchant_agent.negotiate",
-               return_value=_merchant_approval_required()):
+    with patch("app.services.ai_commerce_service.create_negotiation",
+               return_value=_neg_approval_required()):
         with patch("app.services.ai_commerce_service.create_approval",
                    return_value=approval):
             result = orchestrator.run_transaction(db, "BUYER_001", "SUB_PRO_001", 1, 0.18)
@@ -204,8 +192,8 @@ def test_flow_approval_required_no_payment():
 
 def test_flow_rejected_returns_counter_offer():
     db = _make_db(buyer=make_buyer(), product=make_product())
-    with patch("app.services.ai_commerce_service._merchant_agent.negotiate",
-               return_value=_merchant_rejected()):
+    with patch("app.services.ai_commerce_service.create_negotiation",
+               return_value=_neg_rejected()):
         result = orchestrator.run_transaction(db, "BUYER_001", "SUB_PRO_001", 1, 0.30)
 
     assert result["status"] == "rejected"
@@ -222,8 +210,8 @@ def test_flow_budget_exceeded():
         product=make_product(),
         neg_row=make_negotiation_row(final_amount=900.0),
     )
-    with patch("app.services.ai_commerce_service._merchant_agent.negotiate",
-               return_value=_merchant_allowed(final_price=900.0)):
+    with patch("app.services.ai_commerce_service.create_negotiation",
+               return_value=_neg_allowed(final_price=900.0)):
         result = orchestrator.run_transaction(db, "BUYER_001", "SUB_PRO_001", 1, 0.10)
 
     assert result["status"] == "budget_exceeded"
@@ -252,8 +240,8 @@ def test_transcript_step_actors_and_order():
         product=make_product(),
         neg_row=make_negotiation_row(),
     )
-    with patch("app.services.ai_commerce_service._merchant_agent.negotiate",
-               return_value=_merchant_allowed()):
+    with patch("app.services.ai_commerce_service.create_negotiation",
+               return_value=_neg_allowed()):
         with patch("app.services.ai_commerce_service.BuyerAgent.initiate_payment",
                    return_value=PAYMENT_RESULT):
             result = orchestrator.run_transaction(db, "BUYER_001", "SUB_PRO_001", 1, 0.10)
@@ -265,8 +253,8 @@ def test_transcript_step_actors_and_order():
 def test_approval_creation_failure_still_returns_approval_required():
     # Even if create_approval raises, orchestrator should return approval_required gracefully
     db = _make_db(buyer=make_buyer(), product=make_product())
-    with patch("app.services.ai_commerce_service._merchant_agent.negotiate",
-               return_value=_merchant_approval_required()):
+    with patch("app.services.ai_commerce_service.create_negotiation",
+               return_value=_neg_approval_required()):
         with patch("app.services.ai_commerce_service.create_approval",
                    side_effect=Exception("DB error")):
             result = orchestrator.run_transaction(db, "BUYER_001", "SUB_PRO_001", 1, 0.18)
@@ -293,8 +281,8 @@ def test_api_simulate_allowed():
     )
     app.dependency_overrides[get_db] = _override_db(db)
     try:
-        with patch("app.services.ai_commerce_service._merchant_agent.negotiate",
-                   return_value=_merchant_allowed()):
+        with patch("app.services.ai_commerce_service.create_negotiation",
+                   return_value=_neg_allowed()):
             with patch("app.services.ai_commerce_service.BuyerAgent.initiate_payment",
                        return_value=PAYMENT_RESULT):
                 resp = TestClient(app).post(
@@ -313,8 +301,8 @@ def test_api_simulate_rejected():
     db = _make_db(buyer=make_buyer(), product=make_product())
     app.dependency_overrides[get_db] = _override_db(db)
     try:
-        with patch("app.services.ai_commerce_service._merchant_agent.negotiate",
-                   return_value=_merchant_rejected()):
+        with patch("app.services.ai_commerce_service.create_negotiation",
+                   return_value=_neg_rejected()):
             resp = TestClient(app).post(
                 "/api/v1/simulate/ai-commerce",
                 json={"buyer_id": "BUYER_001", "product_id": "SUB_PRO_001",

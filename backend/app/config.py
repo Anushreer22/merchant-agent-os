@@ -16,6 +16,10 @@ class Settings(BaseSettings):
     PAYMENT_RETRY_LIMIT: int = Field(default=2, env="PAYMENT_RETRY_LIMIT")
     PAYMENT_RETRY_DELAY_SECONDS: int = Field(default=1, env="PAYMENT_RETRY_DELAY_SECONDS")
 
+    SECRET_KEY: str = Field(default="dev-secret-key-change-me", env="SECRET_KEY")
+    ALGORITHM: str = Field(default="HS256", env="ALGORITHM")
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default=60, env="ACCESS_TOKEN_EXPIRE_MINUTES")
+
     class Config:
         env_file = ".env"
         case_sensitive = True

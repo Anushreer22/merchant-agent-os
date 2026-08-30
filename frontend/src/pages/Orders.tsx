@@ -1,10 +1,45 @@
-import { useQuery } from '@tanstack/react-query'
-import { fetchOrders } from '../api/client'
+import { useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { fetchOrders, simulateWebhook } from '../api/client'
 import { Spinner, ErrorMsg, Card, PageHeader, EmptyState } from '../components/ui'
 import { Badge } from '../components/Badge'
 
 function fmt(d: string) {
   return new Date(d).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })
+}
+
+function WebhookButton({ orderId, currentStatus }: { orderId: string; currentStatus: string }) {
+  const qc = useQueryClient()
+  const [state, setState] = useState<'idle' | 'loading' | 'done' | 'error'>('idle')
+
+  if (currentStatus === 'paid') {
+    return <span className="text-xs text-slate-400">Already paid</span>
+  }
+
+  const fire = async () => {
+    setState('loading')
+    try {
+      await simulateWebhook(orderId)
+      setState('done')
+      qc.invalidateQueries({ queryKey: ['orders'] })
+    } catch {
+      setState('error')
+      setTimeout(() => setState('idle'), 3000)
+    }
+  }
+
+  if (state === 'done') return <span className="text-xs text-green-600 font-medium">✓ Captured</span>
+  if (state === 'error') return <span className="text-xs text-red-500">Failed — retry</span>
+
+  return (
+    <button
+      onClick={fire}
+      disabled={state === 'loading'}
+      className="rounded-md bg-emerald-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-emerald-700 disabled:opacity-50 transition-colors"
+    >
+      {state === 'loading' ? '…' : 'Simulate Webhook'}
+    </button>
+  )
 }
 
 export function Orders() {
@@ -22,7 +57,7 @@ export function Orders() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-100 text-left">
-                  {['Order ID','Negotiation ID','Amount','Currency','Receipt','Status','Created'].map(h => (
+                  {['Order ID', 'Negotiation ID', 'Amount', 'Currency', 'Receipt', 'Status', 'Created', 'Action'].map(h => (
                     <th key={h} className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">{h}</th>
                   ))}
                 </tr>
@@ -37,6 +72,9 @@ export function Orders() {
                     <td className="px-4 py-3 font-mono text-xs text-slate-500">{o.receipt}</td>
                     <td className="px-4 py-3"><Badge label={o.status} /></td>
                     <td className="px-4 py-3 text-slate-400 text-xs">{fmt(o.created_at)}</td>
+                    <td className="px-4 py-3">
+                      <WebhookButton orderId={o.order_id} currentStatus={o.status} />
+                    </td>
                   </tr>
                 ))}
               </tbody>

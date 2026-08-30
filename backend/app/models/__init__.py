@@ -8,3 +8,4 @@ from app.models.webhook_event import WebhookEvent
 from app.models.approval import Approval
 from app.models.buyer import Buyer
 from app.models.audit import AuditEvent
+from app.models.user import User

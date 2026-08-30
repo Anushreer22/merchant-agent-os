@@ -1,6 +1,11 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { AuthProvider } from './context/AuthContext'
+import { ProtectedRoute } from './components/ProtectedRoute'
 import { Layout } from './components/Layout'
+import { Home } from './pages/Home'
+import { Login } from './pages/Login'
+import { Signup } from './pages/Signup'
 import { Dashboard } from './pages/Dashboard'
 import { Catalog } from './pages/Catalog'
 import { BuyerSimulator } from './pages/BuyerSimulator'
@@ -19,22 +24,35 @@ const qc = new QueryClient({
 export default function App() {
   return (
     <QueryClientProvider client={qc}>
-      <BrowserRouter>
-        <Routes>
-          <Route element={<Layout />}>
-            <Route index element={<Dashboard />} />
-            <Route path="catalog" element={<Catalog />} />
-            <Route path="buyer-simulator" element={<BuyerSimulator />} />
-            <Route path="negotiations" element={<Negotiations />} />
-            <Route path="approvals" element={<Approvals />} />
-            <Route path="orders" element={<Orders />} />
-            <Route path="payments" element={<Payments />} />
-            <Route path="audit" element={<Audit />} />
-            <Route path="policies" element={<Policies />} />
-            <Route path="settings" element={<Settings />} />
-          </Route>
-        </Routes>
-      </BrowserRouter>
+      <AuthProvider>
+        <BrowserRouter>
+          <Routes>
+            {/* Public routes */}
+            <Route path="/" element={<Home />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<Signup />} />
+
+            {/* Protected routes */}
+            <Route element={<ProtectedRoute />}>
+              <Route element={<Layout />}>
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/catalog" element={<Catalog />} />
+                <Route path="/buyer-simulator" element={<BuyerSimulator />} />
+                <Route path="/negotiations" element={<Negotiations />} />
+                <Route path="/approvals" element={<Approvals />} />
+                <Route path="/orders" element={<Orders />} />
+                <Route path="/payments" element={<Payments />} />
+                <Route path="/audit" element={<Audit />} />
+                <Route path="/policies" element={<Policies />} />
+                <Route path="/settings" element={<Settings />} />
+              </Route>
+            </Route>
+
+            {/* Fallback */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </BrowserRouter>
+      </AuthProvider>
     </QueryClientProvider>
   )
 }

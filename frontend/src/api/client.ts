@@ -1,8 +1,31 @@
 import axios from 'axios'
 
-const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8000/api/v1'
+const BASE = import.meta.env.VITE_API_URL ?? '/api/v1'
 
-export const api = axios.create({ baseURL: BASE })
+export const api = axios.create({
+  baseURL: BASE,
+  headers: { 'Content-Type': 'application/json' },
+})
+
+// Attach token from localStorage on every request
+api.interceptors.request.use(config => {
+  const token = localStorage.getItem('maos_token')
+  if (token) config.headers.Authorization = `Bearer ${token}`
+  return config
+})
+
+// Redirect to /login on 401
+api.interceptors.response.use(
+  r => r,
+  err => {
+    if (err.response?.status === 401 && !window.location.pathname.startsWith('/login')) {
+      localStorage.removeItem('maos_token')
+      localStorage.removeItem('maos_user')
+      window.location.href = '/login'
+    }
+    return Promise.reject(err)
+  },
+)
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -149,7 +172,7 @@ export interface SimulateResult {
 
 export const fetchStats = () => api.get<Stats>('/stats').then(r => r.data)
 export const fetchCatalog = () => api.get<CatalogResponse>('/catalog').then(r => r.data)
-export const fetchPolicy = () => api.get<Policy>('/policy').then(r => r.data)
+export const fetchPolicy = () => api.get<Policy>('/policy/').then(r => r.data)
 export const fetchNegotiations = () => api.get<Negotiation[]>('/negotiations/').then(r => r.data)
 export const fetchApprovals = () => api.get<Approval[]>('/approvals/').then(r => r.data)
 export const fetchOrders = () => api.get<Order[]>('/payments/orders').then(r => r.data)
@@ -162,3 +185,6 @@ export const decideApproval = (id: string, decision: string) =>
 
 export const runSimulation = (body: SimulateRequest) =>
   api.post<SimulateResult>('/simulate/ai-commerce', body).then(r => r.data)
+
+export const simulateWebhook = (order_id: string) =>
+  api.post('/simulate/webhook', { order_id }).then(r => r.data)

@@ -11,6 +11,7 @@ def seed():
     db = SessionLocal()
     try:
         seed_default_policy(db)
+        _seed_default_buyer(db)
         if db.query(Product).count() > 0:
             print("Products already seeded. Skipping.")
             return
@@ -131,7 +132,6 @@ def seed():
         )
         db.add(catalog)
         db.commit()
-        _seed_default_buyer(db)
         print("Seed completed: 5 products and catalog version 1.0 created.")
     except Exception as e:
         db.rollback()

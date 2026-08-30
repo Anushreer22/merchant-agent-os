@@ -5,12 +5,10 @@ from sqlalchemy.orm import Session
 from app.models.buyer import Buyer
 from app.models.product import Product
 from app.agents.buyer_agent import BuyerAgent
-from app.agents.merchant_agent import MerchantAgent
+from app.services.negotiation_service import create_negotiation
 from app.services.approval_service import create_approval
 
 logger = logging.getLogger(__name__)
-
-_merchant_agent = MerchantAgent()
 
 
 class AICommerceOrchestrator:
@@ -48,15 +46,19 @@ class AICommerceOrchestrator:
             },
         })
 
-        # --- Step 2: Merchant agent processes the offer message ---
-        merchant_result = _merchant_agent.negotiate(
-            buyer_message=offer["message"], db=db
+        # --- Step 2: Directly call negotiation service (bypass LLM intent extraction) ---
+        neg_result = create_negotiation(
+            db=db,
+            buyer_id=buyer_id,
+            product_id=product_id,
+            quantity=quantity,
+            requested_discount=offer["requested_discount"],
         )
-        policy_result = merchant_result.get("policy_result") or {}
-        decision = policy_result.get("decision", "REJECTED")
-        negotiation_id = policy_result.get("negotiation_id")
-        final_price = float(policy_result.get("final_price") or 0.0)
-        counter_offer = policy_result.get("counter_offer")
+        decision = neg_result.get("decision", "REJECTED")
+        negotiation_id = neg_result.get("negotiation_id")
+        final_price = float(neg_result.get("final_price") or 0.0)
+        counter_offer = neg_result.get("counter_offer")
+        currency = neg_result.get("currency", "INR")
 
         transcript.append({
             "step": 2,
@@ -64,10 +66,10 @@ class AICommerceOrchestrator:
             "action": "evaluate_offer",
             "detail": {
                 "decision": decision,
-                "reason_code": policy_result.get("reason_code"),
+                "reason_code": neg_result.get("reason_code"),
                 "negotiation_id": negotiation_id,
                 "final_price": final_price,
-                "reply": merchant_result.get("reply"),
+                "counter_offer": counter_offer,
             },
         })
 
@@ -77,14 +79,14 @@ class AICommerceOrchestrator:
                 "step": 3,
                 "actor": "orchestrator",
                 "action": "terminate",
-                "detail": {"reason": "offer_rejected"},
+                "detail": {"reason": "offer_rejected", "counter_offer": counter_offer},
             })
             return {
                 "status": "rejected",
                 "negotiation_id": negotiation_id,
                 "counter_offer": counter_offer,
                 "final_price": final_price,
-                "currency": policy_result.get("currency"),
+                "currency": currency,
                 "transcript": transcript,
             }
 
@@ -109,7 +111,7 @@ class AICommerceOrchestrator:
                 "negotiation_id": negotiation_id,
                 "approval_id": approval_id,
                 "final_price": final_price,
-                "currency": policy_result.get("currency"),
+                "currency": currency,
                 "counter_offer": counter_offer,
                 "transcript": transcript,
             }
@@ -126,7 +128,7 @@ class AICommerceOrchestrator:
                 "status": "budget_exceeded",
                 "negotiation_id": negotiation_id,
                 "final_price": final_price,
-                "currency": policy_result.get("currency"),
+                "currency": currency,
                 "transcript": transcript,
             }
 
@@ -160,7 +162,7 @@ class AICommerceOrchestrator:
             "status": "payment_pending",
             "negotiation_id": negotiation_id,
             "final_price": final_price,
-            "currency": policy_result.get("currency"),
+            "currency": currency,
             "payment": payment,
             "transcript": transcript,
         }
