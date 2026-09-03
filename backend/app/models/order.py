@@ -13,4 +13,5 @@ class Order(Base):
     receipt = Column(String, nullable=False)
     status = Column(String, default="created", nullable=False)
     metadata_json = Column(JSON, nullable=True)
+    invoice_url = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Numeric, JSON, DateTime, func
+from sqlalchemy import Column, Integer, String, Numeric, Float, JSON, DateTime, func
 from app.database import Base
 
 
@@ -13,4 +13,8 @@ class Buyer(Base):
     max_single_transaction = Column(Numeric(14, 2), nullable=False)
     preferred_categories = Column(JSON, default=list)
     negotiation_strategy = Column(String, default="balanced", nullable=False)
+    trust_score = Column(Float, default=0.0, nullable=False)
+    total_transactions = Column(Integer, default=0, nullable=False)
+    successful_transactions = Column(Integer, default=0, nullable=False)
+    on_time_payments = Column(Integer, default=0, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

@@ -1,6 +1,8 @@
 from fastapi import FastAPI, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
+from fastapi.staticfiles import StaticFiles
+from pathlib import Path
 from starlette.middleware.base import BaseHTTPMiddleware
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
@@ -29,6 +31,13 @@ from app.api.audit import router as audit_router
 from app.api.failures import router as failures_router
 from app.api.x402 import router as x402_router
 from app.api.auth import router as auth_router
+from app.api.stats import router as stats_router
+from app.api.trust import router as trust_router
+from app.api.invoices import router as invoices_router
+from app.api.currency import router as currency_router
+from app.api.catalog_ai import router as catalog_ai_router
+from app.api.ws import router as ws_router
+from app.api.merchants import router as merchants_router
 
 limiter = Limiter(key_func=get_remote_address, default_limits=["100/minute"])
 
@@ -49,6 +58,10 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc",
 )
+
+_static_dir = Path(__file__).parent.parent / "static"
+_static_dir.mkdir(exist_ok=True)
+app.mount("/static", StaticFiles(directory=str(_static_dir)), name="static")
 
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
@@ -80,6 +93,13 @@ app.include_router(simulate_webhook_router, prefix=f"{settings.API_V1_PREFIX}/si
 app.include_router(audit_router, prefix=f"{settings.API_V1_PREFIX}/audit", tags=["audit"])
 app.include_router(failures_router, prefix=f"{settings.API_V1_PREFIX}/simulate/failures", tags=["failures"])
 app.include_router(x402_router, prefix=f"{settings.API_V1_PREFIX}/x402", tags=["x402"])
+app.include_router(stats_router, prefix=f"{settings.API_V1_PREFIX}/stats", tags=["stats"])
+app.include_router(trust_router, prefix=f"{settings.API_V1_PREFIX}/trust", tags=["trust"])
+app.include_router(invoices_router, prefix=f"{settings.API_V1_PREFIX}/orders", tags=["invoices"])
+app.include_router(currency_router, prefix=f"{settings.API_V1_PREFIX}/currency", tags=["currency"])
+app.include_router(catalog_ai_router, prefix=f"{settings.API_V1_PREFIX}/catalog", tags=["catalog"])
+app.include_router(merchants_router, prefix=f"{settings.API_V1_PREFIX}/merchants", tags=["merchants"])
+app.include_router(ws_router, prefix="/ws", tags=["websocket"])
 
 
 @app.get(f"{settings.API_V1_PREFIX}/stats", tags=["stats"])

@@ -1,6 +1,14 @@
 from pydantic_settings import BaseSettings
 from pydantic import Field
 
+# Static exchange rates (base: INR). Update or fetch from API for production.
+EXCHANGE_RATES: dict[str, float] = {
+    "INR": 1.0,
+    "USD": 0.012,
+    "EUR": 0.011,
+    "GBP": 0.0094,
+}
+
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "Merchant Agent OS"

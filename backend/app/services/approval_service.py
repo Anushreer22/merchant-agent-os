@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from app.models.approval import Approval
 from app.models.negotiation import Negotiation
 from app.audit.ledger import append_audit_event
+from app.services.notification_service import notify
 
 
 def create_approval(db: Session, negotiation_id: str) -> Approval:

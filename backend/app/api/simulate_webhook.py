@@ -5,8 +5,12 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.order import Order
+from app.models.negotiation import Negotiation
 from app.models.webhook_event import WebhookEvent
 from app.audit.ledger import append_audit_event
+from app.services.invoice_service import generate_invoice
+from app.services.trust_service import update_trust_score_after_payment
+from app.services.notification_service import notify
 
 router = APIRouter()
 
@@ -23,16 +27,24 @@ def simulate_webhook(body: SimulateWebhookRequest, db: Session = Depends(get_db)
         raise HTTPException(status_code=404, detail="Order not found")
 
     event_id = f"evt_sim_{uuid.uuid4().hex[:16]}"
-
-    # Idempotency: skip if a simulated event already processed this order
-    existing = db.query(WebhookEvent).filter(
-        WebhookEvent.event_id == event_id
-    ).first()
-    if existing:
-        return {"status": "duplicate", "event_id": event_id}
-
-    # Update order status
     order.status = "paid"
+
+    # Generate invoice
+    neg = db.query(Negotiation).filter(
+        Negotiation.negotiation_id == order.negotiation_id
+    ).first()
+    order_data = {
+        "buyer_id": neg.buyer_id if neg else "—",
+        "product_id": neg.product_id if neg else "—",
+        "quantity": neg.quantity if neg else 1,
+        "discount": float(neg.final_discount) if neg else 0.0,
+        "amount": float(order.amount),
+        "currency": order.currency,
+        "status": "paid",
+    }
+    invoice_url = generate_invoice(body.order_id, order_data)
+    if invoice_url:
+        order.invoice_url = invoice_url
 
     webhook_row = WebhookEvent(
         event_id=event_id,
@@ -42,6 +54,13 @@ def simulate_webhook(body: SimulateWebhookRequest, db: Session = Depends(get_db)
     )
     db.add(webhook_row)
     db.commit()
+
+    # Update buyer trust score
+    if neg:
+        try:
+            update_trust_score_after_payment(db, neg.buyer_id, success=True)
+        except Exception:
+            pass
 
     try:
         append_audit_event(
@@ -54,4 +73,11 @@ def simulate_webhook(body: SimulateWebhookRequest, db: Session = Depends(get_db)
     except Exception:
         pass
 
-    return {"status": "processed", "event_id": event_id, "order_id": body.order_id}
+    notify({"type": "PAYMENT_CAPTURED", "order_id": body.order_id, "amount": float(order.amount)})
+
+    return {
+        "status": "processed",
+        "event_id": event_id,
+        "order_id": body.order_id,
+        "invoice_url": invoice_url or None,
+    }
