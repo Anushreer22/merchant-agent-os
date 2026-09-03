@@ -11,7 +11,8 @@ from app.audit.ledger import append_audit_event
 from app.services.invoice_service import generate_invoice
 from app.services.trust_service import update_trust_score_after_payment
 from app.services.notification_service import notify
-
+from app.models.buyer import Buyer
+from app.services.trust_service import update_trust_score
 router = APIRouter()
 
 
@@ -54,6 +55,17 @@ def simulate_webhook(body: SimulateWebhookRequest, db: Session = Depends(get_db)
     )
     db.add(webhook_row)
     db.commit()
+    # Update buyer trust score
+    negotiation = db.query(Negotiation).filter(Negotiation.negotiation_id == order.negotiation_id).first()
+    if negotiation:
+        buyer = db.query(Buyer).filter(Buyer.buyer_id == negotiation.buyer_id).first()
+        if buyer:
+            buyer.total_transactions += 1
+            buyer.successful_transactions += 1
+            buyer.on_time_payments += 1
+            db.add(buyer)
+            db.commit()
+            update_trust_score(db, buyer.buyer_id)
 
     # Update buyer trust score
     if neg:

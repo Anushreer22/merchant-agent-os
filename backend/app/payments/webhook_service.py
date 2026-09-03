@@ -1,12 +1,17 @@
 import hmac
 import hashlib
+import json
 import logging
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
+
 from app.models.webhook_event import WebhookEvent
 from app.models.order import Order
+from app.models.negotiation import Negotiation
+from app.models.buyer import Buyer
 from app.config import settings
 from app.audit.ledger import append_audit_event
+from app.services.trust_service import update_trust_score
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +66,10 @@ def process_webhook_event(db: Session, payload: dict, signature_header: str) -> 
             order = db.query(Order).filter(Order.order_id == order_id).first()
             if order:
                 order.status = new_status
+                # ---------------------------
+                # Update buyer trust score
+                # ---------------------------
+                _update_buyer_trust(db, order, event_type)
             else:
                 logger.warning("Webhook %s references unknown order_id=%s", event_id, order_id)
         else:
@@ -98,7 +107,6 @@ def _canonical_bytes(payload: dict) -> bytes:
     In production the raw request body bytes are passed directly; this helper
     exists so tests can pass a dict and still exercise the code path.
     """
-    import json
     return json.dumps(payload, separators=(",", ":")).encode("utf-8")
 
 
@@ -117,3 +125,30 @@ def _extract_order_id(payload: dict) -> str | None:
     except Exception:
         pass
     return None
+
+
+def _update_buyer_trust(db: Session, order: Order, event_type: str) -> None:
+    """Update the buyer trust score based on the payment outcome."""
+    # Determine if this is a successful payment
+    is_success = event_type in ("payment.captured", "order.paid")
+
+    # Safely get negotiation_id; test mocks may not have it
+    negotiation_id = getattr(order, "negotiation_id", None)
+    if not negotiation_id:
+        return
+
+    negotiation = db.query(Negotiation).filter(Negotiation.negotiation_id == negotiation_id).first()
+    if not negotiation:
+        return
+
+    buyer = db.query(Buyer).filter(Buyer.buyer_id == negotiation.buyer_id).first()
+    if not buyer:
+        return
+
+    buyer.total_transactions += 1
+    if is_success:
+        buyer.successful_transactions += 1
+        buyer.on_time_payments += 1
+
+    db.add(buyer)
+    update_trust_score(db, buyer.buyer_id)
