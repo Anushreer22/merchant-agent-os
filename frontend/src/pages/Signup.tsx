@@ -1,36 +1,11 @@
 import { useEffect, useState } from "react";
 import type { FormEventHandler } from "react";
 import { Link, useSearchParams, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 type Role = "buyer" | "merchant" | "admin";
 
 const VALID_ROLES: Role[] = ["buyer", "merchant", "admin"];
-
-type SignupData = {
-  name: string;
-  email: string;
-  password: string;
-  role: Role;
-};
-
-function useAuth() {
-  const signup = async (data: SignupData) => {
-    const response = await fetch("/api/v1/auth/signup", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
-
-    if (!response.ok) {
-      const result = (await response.json().catch(() => null)) as {
-        message?: string;
-      } | null;
-      throw new Error(result?.message ?? "Unable to create your account.");
-    }
-  };
-
-  return { signup };
-}
 
 function isValidRole(value: string | null): value is Role {
   return value !== null && VALID_ROLES.includes(value as Role);
@@ -47,7 +22,7 @@ export default function Signup() {
     isValidRole(roleParam) ? roleParam : "merchant"
   );
 
-  const [name, setName] = useState("");
+  const [full_name, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
@@ -69,13 +44,7 @@ export default function Signup() {
     setError("");
 
     try {
-      await signup({
-        name,
-        email,
-        password,
-        role,
-      });
-
+      await signup(email, password, full_name, role);
       navigate("/dashboard");
     } catch (err) {
       setError(
@@ -115,18 +84,18 @@ export default function Signup() {
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
               <label
-                htmlFor="name"
+                htmlFor="full_name"
                 className="mb-2 block text-sm font-medium text-slate-700"
               >
                 Name
               </label>
 
               <input
-                id="name"
+                id="full_name"
                 type="text"
                 required
-                value={name}
-                onChange={(event) => setName(event.target.value)}
+                value={full_name}
+                onChange={(event) => setFullName(event.target.value)}
                 className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                 placeholder="Your name"
               />

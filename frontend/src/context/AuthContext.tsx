@@ -38,13 +38,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const login = useCallback(async (email: string, password: string) => {
-    const { data } = await api.post('/auth/login', { email, password })
-    _persist(data, data.access_token)
+    try {
+      const { data } = await api.post('/auth/login', { email, password })
+      _persist(data, data.access_token)
+    } catch (error: any) {
+      const message = error.response?.data?.detail || error.message || 'Unable to login.'
+      throw new Error(message)
+    }
   }, [])
 
   const signup = useCallback(async (email: string, password: string, full_name: string, role: string) => {
-    const { data } = await api.post('/auth/signup', { email, password, full_name, role })
-    _persist(data, data.access_token)
+    try {
+      const { data } = await api.post('/auth/signup', { email, password, full_name, role })
+      _persist(data, data.access_token)
+    } catch (error: any) {
+      const message = error.response?.data?.detail || error.message || 'Unable to create your account.'
+      throw new Error(message)
+    }
   }, [])
 
   const logout = useCallback(() => {

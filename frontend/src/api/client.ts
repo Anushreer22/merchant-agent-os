@@ -10,8 +10,12 @@ export const api = axios.create({
 // Attach token from localStorage on every request
 api.interceptors.request.use(config => {
   const token = localStorage.getItem('maos_token')
-  if (token) config.headers.Authorization = `Bearer ${token}`
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`
+  }
   return config
+}, error => {
+  return Promise.reject(error)
 })
 
 // Redirect to /login on 401
