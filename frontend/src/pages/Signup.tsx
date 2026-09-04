@@ -1,99 +1,216 @@
-import { useState, type FormEvent } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
-import { useAuth } from '../context/AuthContext'
+import { useEffect, useState } from "react";
+import type { FormEventHandler } from "react";
+import { Link, useSearchParams, useNavigate } from "react-router-dom";
 
-export function Signup() {
-  const { signup } = useAuth()
-  const navigate = useNavigate()
-  const [form, setForm] = useState({ full_name: '', email: '', password: '', role: 'merchant' })
-  const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
+type Role = "buyer" | "merchant" | "admin";
 
-  const set = (k: keyof typeof form, v: string) => setForm(f => ({ ...f, [k]: v }))
+const VALID_ROLES: Role[] = ["buyer", "merchant", "admin"];
 
-  const submit = async (e: FormEvent) => {
-    e.preventDefault()
-    setError('')
-    setLoading(true)
-    try {
-      await signup(form.email, form.password, form.full_name, form.role)
-      navigate('/dashboard')
-    } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
-      setError(msg ?? 'Signup failed. Please try again.')
-    } finally {
-      setLoading(false)
+type SignupData = {
+  name: string;
+  email: string;
+  password: string;
+  role: Role;
+};
+
+function useAuth() {
+  const signup = async (data: SignupData) => {
+    const response = await fetch("/api/v1/auth/signup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const result = (await response.json().catch(() => null)) as {
+        message?: string;
+      } | null;
+      throw new Error(result?.message ?? "Unable to create your account.");
     }
-  }
+  };
+
+  return { signup };
+}
+
+function isValidRole(value: string | null): value is Role {
+  return value !== null && VALID_ROLES.includes(value as Role);
+}
+
+export default function Signup() {
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const { signup } = useAuth();
+
+  const roleParam = searchParams.get("role");
+
+  const [role, setRole] = useState<Role>(
+    isValidRole(roleParam) ? roleParam : "merchant"
+  );
+
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (isValidRole(roleParam)) {
+      setRole(roleParam);
+    } else {
+      setRole("merchant");
+    }
+  }, [roleParam]);
+
+  const handleSubmit: FormEventHandler<HTMLFormElement> = async (event) => {
+    event.preventDefault();
+
+    setLoading(true);
+    setError("");
+
+    try {
+      await signup({
+        name,
+        email,
+        password,
+        role,
+      });
+
+      navigate("/dashboard");
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Unable to create your account."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
-      <div className="w-full max-w-sm">
-        <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-blue-600">
-            <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-            </svg>
+    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-10">
+      <div className="w-full max-w-md">
+        <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
+          <div className="mb-8 text-center">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-slate-900 text-xl">
+              🤖
+            </div>
+
+            <h1 className="mt-4 text-2xl font-bold text-slate-900">
+              Create your account
+            </h1>
+
+            <p className="mt-2 text-sm text-slate-500">
+              Join Merchant Agent OS
+            </p>
           </div>
-          <h1 className="text-2xl font-bold text-slate-900">Create Account</h1>
-          <p className="mt-1 text-sm text-slate-500">Join Merchant Agent OS</p>
-        </div>
 
-        <form onSubmit={submit} className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm space-y-4">
           {error && (
-            <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">{error}</div>
+            <div className="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              {error}
+            </div>
           )}
-          <label className="block">
-            <span className="text-xs font-medium text-slate-600">Full Name</span>
-            <input
-              required value={form.full_name} onChange={e => set('full_name', e.target.value)}
-              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-              placeholder="Jane Smith"
-            />
-          </label>
-          <label className="block">
-            <span className="text-xs font-medium text-slate-600">Email</span>
-            <input
-              type="email" required value={form.email} onChange={e => set('email', e.target.value)}
-              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-              placeholder="you@example.com"
-            />
-          </label>
-          <label className="block">
-            <span className="text-xs font-medium text-slate-600">Password</span>
-            <input
-              type="password" required minLength={8} value={form.password} onChange={e => set('password', e.target.value)}
-              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-              placeholder="Min. 8 characters"
-            />
-          </label>
-          <label className="block">
-            <span className="text-xs font-medium text-slate-600">Role</span>
-            <select
-              value={form.role} onChange={e => set('role', e.target.value)}
-              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none bg-white"
-            >
-              <option value="merchant">Merchant</option>
-              <option value="buyer">Buyer</option>
-              <option value="admin">Admin</option>
-            </select>
-          </label>
-          <button
-            type="submit" disabled={loading}
-            className="w-full rounded-lg bg-blue-600 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
-          >
-            {loading ? 'Creating account…' : 'Create Account'}
-          </button>
-        </form>
 
-        <p className="mt-4 text-center text-sm text-slate-500">
-          Already have an account?{' '}
-          <Link to="/login" className="font-medium text-blue-600 hover:underline">Sign in</Link>
-        </p>
-        <p className="mt-2 text-center text-sm text-slate-500">
-          <Link to="/" className="text-slate-400 hover:text-slate-600">← Back to home</Link>
-        </p>
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div>
+              <label
+                htmlFor="name"
+                className="mb-2 block text-sm font-medium text-slate-700"
+              >
+                Name
+              </label>
+
+              <input
+                id="name"
+                type="text"
+                required
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                placeholder="Your name"
+              />
+            </div>
+
+            <div>
+              <label
+                htmlFor="email"
+                className="mb-2 block text-sm font-medium text-slate-700"
+              >
+                Email
+              </label>
+
+              <input
+                id="email"
+                type="email"
+                required
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                placeholder="you@example.com"
+              />
+            </div>
+
+            <div>
+              <label
+                htmlFor="password"
+                className="mb-2 block text-sm font-medium text-slate-700"
+              >
+                Password
+              </label>
+
+              <input
+                id="password"
+                type="password"
+                required
+                minLength={8}
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                placeholder="Minimum 8 characters"
+              />
+            </div>
+
+            <div>
+              <label
+                htmlFor="role"
+                className="mb-2 block text-sm font-medium text-slate-700"
+              >
+                Account type
+              </label>
+
+              <select
+                id="role"
+                value={role}
+                onChange={(event) => setRole(event.target.value as Role)}
+                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              >
+                <option value="buyer">AI Buyer</option>
+                <option value="merchant">Merchant Agent</option>
+                <option value="admin">Admin</option>
+              </select>
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full rounded-xl bg-slate-900 px-5 py-3.5 font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {loading ? "Creating account..." : "Create Account"}
+            </button>
+          </form>
+
+          <p className="mt-6 text-center text-sm text-slate-500">
+            Already have an account?{" "}
+            <Link
+              to="/login"
+              className="font-semibold text-blue-600 hover:text-blue-700"
+            >
+              Sign in
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
-  )
+  );
 }

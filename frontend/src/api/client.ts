@@ -26,6 +26,10 @@ api.interceptors.response.use(
     return Promise.reject(err)
   },
 )
+export const verifyAuditChain = () => api.get('/audit/verify').then(r => r.data)
+
+export const fetchBuyerTrustScore = (buyerId: string) =>
+  api.get(`/buyers/${buyerId}/trust-score`).then(r => r.data)
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
