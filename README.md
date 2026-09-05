@@ -1,190 +1,378 @@
-# Merchant Agent OS
+# Merchant Agent OS + AI Buyer Simulator
 
-An autonomous AI-to-AI commerce platform where a **Buyer Agent** and a **Merchant Agent** negotiate deals in real time, enforce policy rules deterministically, process payments via Razorpay, and maintain a tamper-evident audit ledger — all without human intervention unless escalation is required.
+**AI-to-AI Commerce, Safely Governed**
 
----
+## Problem Statement
 
-## Problem / Solution
+As AI agents begin transacting on behalf of humans, merchants need a secure, governed, and auditable way to let AI buyers and sellers negotiate without uncontrolled financial decisions. Traditional e-commerce APIs were not designed for autonomous agents: there is no budget enforcement, no deterministic policy layer, no human escalation path, and no tamper-evident record of what the agents agreed to.
 
-**Problem:** B2B procurement involves repetitive, rule-bound negotiations that consume human time. Approval bottlenecks slow deals. Payment initiation is manual.
-
-**Solution:** Merchant Agent OS automates the full commerce loop — from offer to payment — using AI agents constrained by a deterministic policy engine. Humans only intervene when deals exceed policy thresholds.
-
----
+Merchant Agent OS solves this by treating AI agents as first-class participants in commerce. Every discount request, negotiation outcome, and payment event passes through a deterministic policy engine. High-value deals require human approval. Razorpay test-mode payments provide a real settlement layer, and a hash-chained audit ledger ensures every action is verifiable.
 
 ## Key Features
 
-- AI-to-AI negotiation (OpenAI-powered Buyer + Merchant agents)
-- Deterministic policy engine (discount, margin, quantity, amount limits)
-- Human approval workflow for out-of-policy deals
-- Razorpay order + payment link creation
-- Webhook processing with idempotency
-- Tamper-evident audit ledger (SHA-256 hash chain)
-- JWT authentication (signup/login)
-- Rate limiting on sensitive endpoints
-- Security headers middleware
-- React dashboard with real-time data
+- **Agent-readable product catalog** with versioned catalog entries and structured metadata
+- **Deterministic policy engine** — the LLM never decides financial actions; rules are enforced in code
+- **AI Merchant Agent** with LLM intent extraction and structured negotiation responses
+- **AI Buyer Agent** with a budget firewall that blocks deals exceeding configured limits
+- **Human approval queue** for high-value / high-discount transactions
+- **Razorpay Test Mode** integration — Orders + Payment Links with real API flows
+- **Webhook signature verification & idempotency** — HMAC-SHA256 validation, duplicate-event rejection
+- **Hash-chained tamper-evident audit ledger** — every state change is recorded and linked
+- **Role-based access control** — buyer, merchant, and admin roles with JWT authentication
+- **Buyer trust scoring** — dynamic score based on successful and on-time transactions
+- **Advanced analytics dashboard** — revenue time series, discount distribution, and success rate charts
+- **One-click full demo flow** — trigger the entire AI-to-AI pipeline with a single API call
 
----
-
-## Architecture
+## Architecture Overview
 
 ```mermaid
-graph TD
-    FE[React Frontend :5173] -->|REST /api/v1| BE[FastAPI Backend :8000]
-    BE --> DB[(PostgreSQL :5434)]
-    BE --> RZP[Razorpay API]
-    RZP -->|Webhook| BE
-
-    subgraph Backend
-        BE --> AUTH[Auth Service]
-        BE --> SIM[Simulate Endpoint]
-        SIM --> BA[Buyer Agent]
-        SIM --> MA[Merchant Agent]
-        MA --> PE[Policy Engine]
-        PE --> NEG[Negotiation DB]
-        MA --> PAY[Payment Service]
-        PAY --> RZP
-        BE --> WH[Webhook Handler]
-        WH --> AUD[Audit Ledger]
-    end
+flowchart LR
+    A[AI Buyer Agent] --> B[Discovery\nCatalog]
+    B --> C[Negotiation\nOffer / Counter-offer]
+    C --> D[Policy Engine\nDeterministic Rules]
+    D -->|Within Policy| E[Payment Initiation\nRazorpay Order + Link]
+    D -->|High Discount / Value| F[Human Approval\nQueue]
+    F -->|Approved| E
+    F -->|Rejected| G[Deal Terminated]
+    E --> H[Razorpay\nPayment]
+    H -->|webhook.captured| I[Webhook Processor\nHMAC + Idempotency]
+    I --> J[Order → Paid\nTrust Score Updated]
+    J --> K[Audit Ledger\nHash-chained Events]
+    G --> K
+    C --> K
 ```
 
----
+1. The **AI Buyer Agent** discovers products and makes an initial offer.
+2. The **Merchant Agent** evaluates the offer against the **deterministic policy engine**.
+3. If the discount is within auto-approval limits, an order is created via **Razorpay**.
+4. If the discount exceeds limits, the deal enters the **Human Approval Queue**.
+5. Once payment is initiated, Razorpay processes it and sends a signed webhook.
+6. The **Webhook Processor** verifies the HMAC signature, checks idempotency, updates the order status, and refreshes the buyer trust score.
+7. Every state change is appended to the **Hash-chained Audit Ledger** for tamper-evident compliance.
 
 ## Tech Stack
 
 | Layer | Technology |
 |---|---|
-| Frontend | React 19, TypeScript, Vite, Tailwind CSS, React Query |
-| Backend | FastAPI, SQLAlchemy, Pydantic v2 |
-| Database | PostgreSQL 16 |
-| AI | OpenAI GPT-4o-mini |
-| Payments | Razorpay |
-| Auth | JWT (python-jose), bcrypt 4.0.1 |
-| Rate Limiting | slowapi |
-| Containerization | Docker, Docker Compose |
-| CI | GitHub Actions |
+| **Backend Framework** | FastAPI (Python 3.11+) |
+| **Database** | PostgreSQL 16 (via Docker) |
+| **ORM** | SQLAlchemy 2.0 |
+| **Payments** | Razorpay Test Mode (`razorpay` SDK) |
+| **AI / LLM** | OpenAI GPT-4o-mini (optional, for merchant intent extraction) |
+| **Auth** | JWT HS256 + bcrypt |
+| **Rate Limiting** | slowapi |
+| **Frontend Framework** | React 19 + TypeScript |
+| **Build Tool** | Vite |
+| **Styling** | Tailwind CSS 4 |
+| **Data Fetching** | React Query (TanStack Query v5) |
+| **Charts** | Recharts |
+| **Notifications** | react-hot-toast |
+| **Testing (Backend)** | pytest |
+| **DevOps** | Docker + Docker Compose |
 
----
+## Directory Structure
 
-## Setup
-
-### Docker (recommended)
-
-```bash
-# 1. Clone
-git clone https://github.com/<your-org>/merchant-agent-os.git
-cd merchant-agent-os
-
-# 2. Configure environment
-cp backend/.env.example backend/.env
-# Edit backend/.env — set OPENAI_API_KEY, RAZORPAY_*, SECRET_KEY
-
-# 3. Start all services
-docker compose up --build
-
-# 4. Seed the database
-docker compose exec backend python -m app.scripts.seed_catalog
-
-# 5. Open the app
-open http://localhost
+```
+merchant-agent-os/
+├── backend/
+│   ├── app/
+│   │   ├── agents/              # AI Merchant + Buyer agents
+│   │   ├── api/                 # 23 FastAPI routers
+│   │   ├── audit/               # Hash-chain ledger + hashing utilities
+│   │   ├── models/              # SQLAlchemy ORM models
+│   │   ├── payments/            # Razorpay client, payment service, webhook service
+│   │   ├── policy/              # Deterministic policy engine
+│   │   ├── schemas/             # Pydantic response schemas
+│   │   ├── scripts/             # seed_catalog.py (demo data)
+│   │   ├── services/            # Business logic (negotiation, approval, trust, etc.)
+│   │   ├── main.py              # FastAPI app entry point
+│   │   ├── config.py            # Pydantic settings
+│   │   └── database.py          # SQLAlchemy engine + session
+│   ├── tests/                   # 12 pytest modules (160+ tests)
+│   ├── requirements.txt
+│   ├── Dockerfile
+│   └── .env / .env.example
+├── frontend/
+│   ├── src/
+│   │   ├── pages/               # Dashboard, BuyerSimulator, Approvals, Audit, etc.
+│   │   ├── components/          # UI primitives, dashboards, layout
+│   │   ├── context/             # AuthContext
+│   │   ├── api/                 # Axios client + typed API helpers
+│   │   └── main.tsx
+│   ├── package.json
+│   └── vite.config.ts
+├── docs/
+│   └── architecture.md          # Detailed system design
+├── docker-compose.yml
+├── README.md
+└── LICENSE
 ```
 
-### Local Development
+## Setup Instructions
+
+### Prerequisites
+
+- **Docker** & Docker Compose (for PostgreSQL)
+- **Python** 3.11+
+- **Node.js** 20+ and npm
+
+### 1. Clone the Repository
 
 ```bash
-# Database
-docker compose up db -d
+git clone https://github.com/<your-org>/merchant-agent-os.git
+cd merchant-agent-os
+```
 
-# Backend
+### 2. Start PostgreSQL
+
+```bash
+docker compose up -d db
+```
+
+This starts PostgreSQL 16 on port `5435` with:
+- User: `merchant`
+- Password: `merchant123`
+- Database: `merchant_agent_os`
+
+### 3. Backend Setup
+
+```bash
 cd backend
 python -m venv .venv
-.venv\Scripts\activate        # Windows
-# source .venv/bin/activate   # macOS/Linux
+.venv\Scripts\activate   # Windows
+source .venv/bin/activate # macOS / Linux
 pip install -r requirements.txt
-python -m app.scripts.seed_catalog
-uvicorn app.main:app --reload --port 8000
+```
 
-# Frontend (new terminal)
+Create a `.env` file in `backend/` (copy from `.env.example` if available):
+
+```env
+DATABASE_URL=postgresql://merchant:merchant123@localhost:5435/merchant_agent_os
+SECRET_KEY=dev-secret-key-change-me
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=60
+
+# Razorpay (Test Mode)
+RAZORPAY_KEY_ID=your_test_key_id
+RAZORPAY_KEY_SECRET=your_test_key_secret
+RAZORPAY_WEBHOOK_SECRET=your_webhook_secret
+
+# OpenAI (optional)
+OPENAI_API_KEY=your_openai_api_key
+LLM_MODEL=gpt-4o-mini
+```
+
+Initialize the database and seed demo data:
+
+```bash
+python -m app.scripts.seed_catalog
+```
+
+Start the backend server:
+
+```bash
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+The API docs are available at `http://localhost:8000/docs`.
+
+### 4. Frontend Setup
+
+```bash
 cd frontend
 npm install
 npm run dev
-# Open http://localhost:5173
 ```
 
----
+The frontend runs at `http://localhost:5173`.
 
-## Environment Variables
+### Environment Variables
 
-| Variable | Description | Default |
-|---|---|---|
-| `DATABASE_URL` | PostgreSQL connection string | required |
-| `SECRET_KEY` | JWT signing secret | required |
-| `RAZORPAY_KEY_ID` | Razorpay API key | required for payments |
-| `RAZORPAY_KEY_SECRET` | Razorpay API secret | required for payments |
-| `RAZORPAY_WEBHOOK_SECRET` | Razorpay webhook HMAC secret | required for webhooks |
-| `OPENAI_API_KEY` | OpenAI API key | required for AI agents |
-| `LLM_MODEL` | OpenAI model name | `gpt-4o-mini` |
-| `ACCESS_TOKEN_EXPIRE_MINUTES` | JWT expiry | `60` |
-
----
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `DATABASE_URL` | Yes | — | PostgreSQL connection string |
+| `SECRET_KEY` | Yes | `dev-secret-key-change-me` | JWT signing secret |
+| `ALGORITHM` | No | `HS256` | JWT algorithm |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | No | `60` | Token expiry |
+| `RAZORPAY_KEY_ID` | No | `""` | Razorpay test key ID |
+| `RAZORPAY_KEY_SECRET` | No | `""` | Razorpay test key secret |
+| `RAZORPAY_WEBHOOK_SECRET` | No | `""` | Webhook signature secret |
+| `OPENAI_API_KEY` | No | `""` | OpenAI API key (optional) |
+| `LLM_MODEL` | No | `gpt-4o-mini` | Model for merchant agent |
+| `PAYMENT_RETRY_LIMIT` | No | `2` | Payment retry attempts |
+| `PAYMENT_RETRY_DELAY_SECONDS` | No | `1` | Delay between retries |
 
 ## API Endpoints
 
-| Method | Path | Description |
-|---|---|---|
-| POST | `/api/v1/auth/signup` | Register new user |
-| POST | `/api/v1/auth/login` | Login, returns JWT |
-| GET | `/api/v1/catalog/` | List products |
-| GET | `/api/v1/policy/` | Active policy rules |
-| POST | `/api/v1/negotiations/` | Create negotiation |
-| GET | `/api/v1/negotiations/` | List negotiations |
-| POST | `/api/v1/payments/initiate` | Create Razorpay order + link |
-| GET | `/api/v1/payments/orders` | List orders |
-| GET | `/api/v1/payments/links` | List payment links |
-| POST | `/api/v1/webhooks/razorpay` | Razorpay webhook receiver |
-| GET | `/api/v1/approvals/` | List pending approvals |
-| POST | `/api/v1/approvals/{id}/decide` | Approve or reject |
-| POST | `/api/v1/simulate/ai-commerce` | Run full AI negotiation |
-| POST | `/api/v1/simulate/webhook` | Simulate payment.captured |
-| GET | `/api/v1/audit/` | Audit event log |
-| GET | `/api/v1/audit/verify` | Verify hash chain integrity |
-| GET | `/api/v1/stats` | Dashboard statistics |
+| Method | Path | Description | Required Role |
+|---|---|---|---|
+| `POST` | `/api/v1/auth/signup` | Create a new user | Public |
+| `POST` | `/api/v1/auth/login` | Obtain JWT token | Public |
+| `GET` | `/api/v1/auth/me` | Get current user | Authenticated |
+| `GET` | `/api/v1/catalog/` | Get active product catalog | Authenticated |
+| `GET` | `/api/v1/policy/` | Get active pricing policy | Authenticated |
+| `POST` | `/api/v1/negotiations/` | Create a negotiation | Authenticated |
+| `GET` | `/api/v1/negotiations/` | List negotiations | Authenticated |
+| `POST` | `/api/v1/payments/initiate` | Create Razorpay order + link | buyer, merchant, admin |
+| `GET` | `/api/v1/payments/orders` | List orders | merchant, admin |
+| `GET` | `/api/v1/payments/links` | List payment links | merchant, admin |
+| `POST` | `/api/v1/webhooks/` | Process Razorpay webhook | Public (HMAC verified) |
+| `POST` | `/api/v1/approvals/` | Create approval request | merchant, admin |
+| `POST` | `/api/v1/approvals/{id}/decide` | Approve / reject | merchant, admin |
+| `GET` | `/api/v1/approvals/` | List pending approvals | merchant, admin |
+| `GET` | `/api/v1/buyers/` | List buyers | Authenticated |
+| `GET` | `/api/v1/buyers/{id}/trust-score` | Get buyer trust score | Authenticated |
+| `POST` | `/api/v1/simulate/ai-commerce` | Run AI commerce simulation | Authenticated |
+| `POST` | `/api/v1/simulate/webhook` | Simulate payment webhook | Authenticated |
+| `GET` | `/api/v1/stats` | Platform statistics | Authenticated |
+| `GET` | `/api/v1/stats/advanced` | Advanced stats (CSV export) | merchant, admin |
+| `GET` | `/api/v1/stats/analytics` | Analytics charts data | Authenticated |
+| `GET` | `/api/v1/audit/` | List audit events | Authenticated |
+| `GET` | `/api/v1/audit/verify` | Verify audit chain integrity | Authenticated |
+| `POST` | `/api/v1/demo/full-flow` | Run full demo pipeline | Authenticated |
+| `GET` | `/api/v1/health` | Health check | Public |
+| `GET` | `/api/v1/trust/` | Trust service endpoints | Authenticated |
+| `GET` | `/api/v1/orders` | Invoice / order endpoints | Authenticated |
+| `GET` | `/api/v1/currency/` | Currency / exchange rates | Authenticated |
+| `GET` | `/api/v1/merchants/` | Merchant endpoints | Authenticated |
+| `GET` | `/ws` | WebSocket endpoint | Authenticated |
 
----
+> Note: Full OpenAPI schema with request/response schemas is available at `/docs` when the backend is running.
 
 ## Testing
 
+### Backend
+
 ```bash
 cd backend
+.venv\Scripts\activate   # Windows
+source .venv/bin/activate # macOS / Linux
 python -m pytest tests/ -q
-# Expected: 160 passed
 ```
 
----
+The suite includes **160+ tests** covering:
+- AI commerce orchestrator flows (allowed, rejected, approval-required, budget-exceeded)
+- Negotiation service logic
+- Approval service workflows
+- Payment service idempotency
+- Webhook signature verification and processing
+- Policy engine rules
+- Buyer API endpoints
+- Audit chain validation
+- X402 payment protocol
+- Failure simulation service
 
-## 5-Minute Demo Script
+### Frontend
 
 ```bash
-# 1. Signup
+cd frontend
+npm run build
+```
+
+This runs TypeScript type-checking (`tsc -b`) followed by Vite production build. There should be no TypeScript errors.
+
+## Demo Guide
+
+Follow these steps to run the 5-minute demo of the full AI-to-AI commerce flow.
+
+### Step 1 — Create Accounts
+
+Create a buyer and a merchant account via the signup page or API:
+
+```bash
+# Buyer
 curl -X POST http://localhost:8000/api/v1/auth/signup \
   -H "Content-Type: application/json" \
-  -d '{"email":"demo@example.com","password":"demo1234","full_name":"Demo User","role":"merchant"}'
+  -d '{"email":"buyer@demo.com","password":"demo123","full_name":"Demo Buyer","role":"buyer"}'
 
-# 2. Run AI negotiation (auto-approved deal)
-curl -X POST http://localhost:8000/api/v1/simulate/ai-commerce \
+# Merchant
+curl -X POST http://localhost:8000/api/v1/auth/signup \
   -H "Content-Type: application/json" \
-  -d '{"buyer_id":"BUYER_DEFAULT_001","product_id":"SUB_PRO_001","quantity":1,"desired_discount":0.10}'
-
-# 3. Check audit ledger integrity
-curl http://localhost:8000/api/v1/audit/verify
-
-# 4. Simulate payment captured (use order_id from step 2)
-curl -X POST http://localhost:8000/api/v1/simulate/webhook \
-  -H "Content-Type: application/json" \
-  -d '{"order_id":"<order_id_from_step_2>"}'
-
-# 5. View dashboard stats
-curl http://localhost:8000/api/v1/stats
+  -d '{"email":"merchant@demo.com","password":"demo123","full_name":"Demo Merchant","role":"merchant"}'
 ```
+
+Save the returned `access_token` and `token_type`.
+
+### Step 2 — Discover Products
+
+```bash
+curl http://localhost:8000/api/v1/catalog/
+```
+
+You will see 5 seeded products including `SUB_PRO_001` (Pro Annual Subscription, base price ₹10,000).
+
+### Step 3 — Run the One-Click Full Demo
+
+The fastest way to see the entire pipeline is to use the **"Run Full Demo Flow"** button on the Dashboard (admin/merchant role), or call the API directly:
+
+```bash
+curl -X POST http://localhost:8000/api/v1/demo/full-flow \
+  -H "Authorization: Bearer <your_access_token>"
+```
+
+This endpoint:
+1. Loads `BUYER_DEFAULT_001` and `SUB_PRO_001`
+2. Runs `AICommerceOrchestrator` with `desired_discount=0.18`
+3. Auto-approves the resulting approval via `decide_approval`
+4. Creates a Razorpay order + payment link
+5. Simulates a `payment.captured` webhook (with valid HMAC signature)
+6. Updates the buyer trust score
+7. Returns a summary JSON
+
+**Sample response:**
+
+```json
+{
+  "status": "success",
+  "negotiation_id": "neg-xxx",
+  "approval_id": "APR-xxx",
+  "order_id": "order_xxx",
+  "payment_link": "plink_xxx",
+  "final_status": "paid",
+  "message": "Full demo flow completed successfully"
+}
+```
+
+### Step 4 — Verify the Audit Trail
+
+```bash
+curl http://localhost:8000/api/v1/audit/verify \
+  -H "Authorization: Bearer <your_access_token>"
+```
+
+The audit chain should return `"valid": true`.
+
+### Step 5 — Explore the Dashboard
+
+Open `http://localhost:5173`, log in, and explore:
+- **Stat cards** showing platform metrics
+- **Analytics charts** — revenue over time, discount distribution, and success rate
+- **Approvals page** — see the auto-approved deal
+- **Orders / Payments** — see the paid order and payment link
+
+## What Broke & How We Fixed It
+
+### Razorpay `reference_id` Length Limit
+
+**Problem:** When creating Razorpay orders, the `receipt` field was being used as the `reference_id` for payment links. Razorpay enforces a maximum `reference_id` length of 40 characters. Our initial implementation used the full `negotiation_id` (which can exceed 40 chars), causing `payment_link.create()` to fail with a `422 Unprocessable Entity`.
+
+**Fix:** We truncated the receipt to 35 characters when generating it:
+
+```python
+receipt = f"rcpt_{negotiation.negotiation_id[:35]}"
+```
+
+This ensures the `reference_id` passed to Razorpay stays within the 40-character limit while remaining unique and traceable back to the negotiation.
+
+### Webhook Signature Canonicalization Mismatch
+
+**Problem:** The webhook signature verification was failing intermittently because the canonical JSON used for HMAC computation in the test/demo path did not match Razorpay's exact serialization (whitespace, key ordering).
+
+**Fix:** We standardized on `json.dumps(payload, separators=(",", ":"))` for both signature generation and verification, ensuring byte-for-byte consistency.
+
+## License
+
+MIT — see the [LICENSE](LICENSE) file for details.
+</content>
+
+</content>
