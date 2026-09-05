@@ -1,8 +1,9 @@
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { fetchCatalog } from '../api/client'
-import { Spinner, ErrorMsg, Card, PageHeader, EmptyState } from '../components/ui'
+import { ErrorMsg, Card, PageHeader, EmptyState } from '../components/ui'
 import { Badge } from '../components/Badge'
+import { SkeletonGrid } from '../components/Skeleton'
 
 export function Catalog() {
   const { data, isLoading, error } = useQuery({ queryKey: ['catalog'], queryFn: fetchCatalog })
@@ -11,7 +12,7 @@ export function Catalog() {
   return (
     <div>
       <PageHeader title="Product Catalog" subtitle={data ? `Version ${data.version} · ${data.products.length} products` : 'Active catalog'} />
-      {isLoading && <Spinner />}
+      {isLoading && <SkeletonGrid cards={6} variant="product" />}
       {error && <ErrorMsg msg="Failed to load catalog" />}
       {data && data.products.length === 0 && <EmptyState label="No products in catalog" />}
       {data && (

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
+import { toast } from 'react-hot-toast'
 import { runSimulation, type SimulateRequest, type TranscriptStep } from '../api/client'
 import { Card, PageHeader, ErrorMsg } from '../components/ui'
 
@@ -53,7 +54,15 @@ export function BuyerSimulator() {
     desired_discount: 0.10,
   })
 
-  const mutation = useMutation({ mutationFn: runSimulation })
+  const mutation = useMutation({ 
+    mutationFn: runSimulation,
+    onSuccess: (data) => {
+      toast.success(`Simulation completed: ${data.status.replace(/_/g, ' ').toUpperCase()}`)
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.detail || 'Simulation failed — check backend connection')
+    }
+  })
 
   const set = (k: keyof SimulateRequest, v: string | number) =>
     setForm(f => ({ ...f, [k]: v }))

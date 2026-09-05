@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { toast } from 'react-hot-toast'
 import { fetchOrders, simulateWebhook } from '../api/client'
-import { Spinner, ErrorMsg, Card, PageHeader } from '../components/ui'
+import { ErrorMsg, Card, PageHeader } from '../components/ui'
 import { Badge } from '../components/Badge'
+import { SkeletonTable } from '../components/Skeleton'
 
 function fmt(d: string) {
   return new Date(d).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })
@@ -23,8 +25,10 @@ function WebhookButton({ orderId, currentStatus }: { orderId: string; currentSta
       await simulateWebhook(orderId)
       setState('done')
       qc.invalidateQueries({ queryKey: ['orders'] })
+      toast.success('Payment marked as paid')
     } catch {
       setState('error')
+      toast.error('Failed to simulate webhook — please try again')
       setTimeout(() => setState('idle'), 3000)
     }
   }
@@ -51,7 +55,7 @@ export function Orders() {
   return (
     <div>
       <PageHeader title="Orders" subtitle="Razorpay orders created from negotiations" />
-      {isLoading && <Spinner />}
+      {isLoading && <SkeletonTable rows={5} columns={8} />}
       {error && <ErrorMsg msg="Failed to load orders" />}
 
       {data?.length === 0 && (

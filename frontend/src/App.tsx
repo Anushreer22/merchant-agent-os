@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { Toaster } from 'react-hot-toast'
 
 import { AuthProvider } from './context/AuthContext'
 import { ProtectedRoute } from './components/ProtectedRoute'
@@ -34,6 +35,7 @@ export default function App() {
     <QueryClientProvider client={qc}>
       <AuthProvider>
         <BrowserRouter>
+          <Toaster position="top-right" />
           <Routes>
             {/* ============================================
                 PUBLIC ROUTES
@@ -72,13 +74,13 @@ export default function App() {
                 />
 
                 <Route
-                  path="/orders"
-                  element={<Orders />}
+                  path="/help"
+                  element={<Help />}
                 />
 
                 <Route
-                  path="/help"
-                  element={<Help />}
+                  path="/settings"
+                  element={<Settings />}
                 />
 
                 {/* --------------------------------------------
@@ -120,6 +122,11 @@ export default function App() {
                   />
 
                   <Route
+                    path="/orders"
+                    element={<Orders />}
+                  />
+
+                  <Route
                     path="/payments"
                     element={<Payments />}
                   />
@@ -132,23 +139,6 @@ export default function App() {
                   <Route
                     path="/policies"
                     element={<Policies />}
-                  />
-                </Route>
-
-                {/* --------------------------------------------
-                    ADMIN ONLY
-                -------------------------------------------- */}
-
-                <Route
-                  element={
-                    <ProtectedRoute
-                      allowedRoles={['admin']}
-                    />
-                  }
-                >
-                  <Route
-                    path="/settings"
-                    element={<Settings />}
                   />
                 </Route>
 

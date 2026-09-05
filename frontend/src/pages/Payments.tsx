@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
 import { fetchPaymentLinks } from '../api/client'
-import { Spinner, ErrorMsg, Card, PageHeader, EmptyState } from '../components/ui'
+import { ErrorMsg, Card, PageHeader, EmptyState } from '../components/ui'
 import { Badge } from '../components/Badge'
+import { SkeletonTable } from '../components/Skeleton'
 
 function fmt(d: string) {
   return new Date(d).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })
@@ -13,7 +14,7 @@ export function Payments() {
   return (
     <div>
       <PageHeader title="Payment Links" subtitle="Razorpay payment links generated for orders" />
-      {isLoading && <Spinner />}
+      {isLoading && <SkeletonTable rows={5} columns={6} />}
       {error && <ErrorMsg msg="Failed to load payment links" />}
       {data?.length === 0 && <EmptyState label="No payment links yet" />}
       {data && data.length > 0 && (

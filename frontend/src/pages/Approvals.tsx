@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { toast } from 'react-hot-toast'
 import { fetchApprovals, decideApproval } from '../api/client'
-import { Spinner, ErrorMsg, Card, PageHeader } from '../components/ui'
+import { ErrorMsg, Card, PageHeader } from '../components/ui'
 import { Badge } from '../components/Badge'
+import { SkeletonTable } from '../components/Skeleton'
 
 function fmt(d: string | null) {
   return d ? new Date(d).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) : '—'
@@ -17,13 +19,20 @@ export function Approvals() {
 
   const mutation = useMutation({
     mutationFn: ({ id, decision }: { id: string; decision: string }) => decideApproval(id, decision),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['approvals'] }); setDeciding(null) },
+    onSuccess: (_, { decision }) => {
+      qc.invalidateQueries({ queryKey: ['approvals'] })
+      setDeciding(null)
+      toast.success(decision === 'APPROVED' ? 'Approval granted' : 'Deal rejected')
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.detail || 'Action failed — please try again')
+    }
   })
 
   return (
     <div>
       <PageHeader title="Approvals" subtitle="Human-in-the-loop approval queue" />
-      {isLoading && <Spinner />}
+      {isLoading && <SkeletonTable rows={5} columns={10} />}
       {error && <ErrorMsg msg="Failed to load approvals" />}
 
       {data?.length === 0 && (

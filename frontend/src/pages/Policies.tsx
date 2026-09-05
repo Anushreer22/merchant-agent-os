@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { fetchPolicy } from '../api/client'
-import { Spinner, ErrorMsg, Card, PageHeader } from '../components/ui'
+import { ErrorMsg, Card, PageHeader } from '../components/ui'
+import { SkeletonPolicy } from '../components/Skeleton'
 
 export function Policies() {
   const { data, isLoading, error } = useQuery({ queryKey: ['policy'], queryFn: fetchPolicy })
@@ -8,7 +9,7 @@ export function Policies() {
   return (
     <div>
       <PageHeader title="Active Policy" subtitle="Discount and approval rules enforced by the policy engine" />
-      {isLoading && <Spinner />}
+      {isLoading && <SkeletonPolicy />}
       {error && <ErrorMsg msg="Failed to load policy" />}
       {data && (
         <div className="max-w-2xl space-y-4">

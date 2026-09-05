@@ -39,6 +39,7 @@ from app.api.catalog_ai import router as catalog_ai_router
 from app.api.ws import router as ws_router
 from app.api.merchants import router as merchants_router
 from app.api.trust import router as trust_router
+from app.api.demo import router as demo_router
 limiter = Limiter(key_func=get_remote_address, default_limits=["100/minute"])
 
 
@@ -101,6 +102,7 @@ app.include_router(catalog_ai_router, prefix=f"{settings.API_V1_PREFIX}/catalog"
 app.include_router(merchants_router, prefix=f"{settings.API_V1_PREFIX}/merchants", tags=["merchants"])
 app.include_router(ws_router, prefix="/ws", tags=["websocket"])
 app.include_router(trust_router, prefix=f"{settings.API_V1_PREFIX}/trust", tags=["trust"])
+app.include_router(demo_router, prefix=f"{settings.API_V1_PREFIX}/demo", tags=["demo"])
 
 @app.get(f"{settings.API_V1_PREFIX}/stats", tags=["stats"])
 def get_stats(db: Session = Depends(get_db)):

@@ -196,3 +196,6 @@ export const runSimulation = (body: SimulateRequest) =>
 
 export const simulateWebhook = (order_id: string) =>
   api.post('/simulate/webhook', { order_id }).then(r => r.data)
+
+export const runFullDemo = () =>
+  api.post('/demo/full-flow').then(r => r.data)

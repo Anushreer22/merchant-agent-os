@@ -2,8 +2,9 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { fetchNegotiations, type Negotiation } from '../api/client'
-import { Spinner, ErrorMsg, Card, PageHeader } from '../components/ui'
+import { ErrorMsg, Card, PageHeader } from '../components/ui'
 import { Badge } from '../components/Badge'
+import { SkeletonTable } from '../components/Skeleton'
 
 function fmt(d: string) {
   return new Date(d).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })
@@ -68,7 +69,7 @@ export function Negotiations() {
   return (
     <div>
       <PageHeader title="Negotiations" subtitle="All AI-to-AI and manual negotiations" />
-      {isLoading && <Spinner />}
+      {isLoading && <SkeletonTable rows={5} columns={10} />}
       {error && <ErrorMsg msg="Failed to load negotiations" />}
       {data?.length === 0 && (
         <div className="flex flex-col items-center justify-center py-16 text-slate-400">

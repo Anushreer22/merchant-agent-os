@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useCallback, type ReactNode } from 'react'
+import { toast } from 'react-hot-toast'
 import { api } from '../api/client'
 
 export interface AuthUser {
@@ -41,8 +42,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const { data } = await api.post('/auth/login', { email, password })
       _persist(data, data.access_token)
+      toast.success('Logged in successfully')
     } catch (error: any) {
       const message = error.response?.data?.detail || error.message || 'Unable to login.'
+      toast.error(message)
       throw new Error(message)
     }
   }, [])
@@ -51,8 +54,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const { data } = await api.post('/auth/signup', { email, password, full_name, role })
       _persist(data, data.access_token)
+      toast.success('Account created successfully')
     } catch (error: any) {
       const message = error.response?.data?.detail || error.message || 'Unable to create your account.'
+      toast.error(message)
       throw new Error(message)
     }
   }, [])

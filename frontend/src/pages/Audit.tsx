@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { fetchAudit, fetchAuditVerify } from '../api/client'
-import { Spinner, ErrorMsg, Card, PageHeader, EmptyState } from '../components/ui'
+import { ErrorMsg, Card, PageHeader, EmptyState } from '../components/ui'
 import { Badge } from '../components/Badge'
+import { SkeletonTable } from '../components/Skeleton'
 
 function fmt(d: string) {
   return new Date(d).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })
@@ -59,7 +60,7 @@ export function Audit() {
         </div>
       )}
 
-      {isLoading && <Spinner />}
+      {isLoading && <SkeletonTable rows={5} columns={9} />}
       {error && <ErrorMsg msg="Failed to load audit events" />}
       {data?.length === 0 && <EmptyState label="No audit events recorded yet" />}
       {data && data.length > 0 && (
