@@ -176,9 +176,17 @@ export interface SimulateResult {
   transcript: TranscriptStep[]
 }
 
+export interface Analytics {
+  revenue_time_series: { date: string; revenue: number; orders: number }[]
+  discount_distribution: { range: string; count: number }[]
+  success_rate: number
+  demo_data?: boolean
+}
+
 // ── API calls ────────────────────────────────────────────────────────────────
 
 export const fetchStats = () => api.get<Stats>('/stats').then(r => r.data)
+export const fetchAnalytics = () => api.get<Analytics>('/stats/analytics').then(r => r.data)
 export const fetchCatalog = () => api.get<CatalogResponse>('/catalog').then(r => r.data)
 export const fetchPolicy = () => api.get<Policy>('/policy/').then(r => r.data)
 export const fetchNegotiations = () => api.get<Negotiation[]>('/negotiations/').then(r => r.data)

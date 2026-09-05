@@ -1,8 +1,21 @@
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 
-import { fetchStats } from '../../api/client'
+import { fetchStats, fetchAnalytics } from '../../api/client'
 import { Card, ErrorMsg, PageHeader, Spinner } from '../ui'
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+} from 'recharts'
 
 interface StatCardProps {
   label: string
@@ -97,6 +110,14 @@ export function AdminDashboard() {
     queryKey: ['stats'],
     queryFn: fetchStats,
     refetchInterval: 30_000,
+  })
+
+  const {
+    data: analytics,
+    isLoading: analyticsLoading,
+  } = useQuery({
+    queryKey: ['analytics'],
+    queryFn: fetchAnalytics,
   })
 
   const auditValid = true
@@ -230,6 +251,120 @@ export function AdminDashboard() {
           />
         </div>
       )}
+
+      {/* Analytics */}
+      <section className="mt-8 space-y-6">
+        <h2 className="text-lg font-semibold text-slate-900">Analytics</h2>
+
+        {analyticsLoading ? (
+          <>
+            <div className="grid gap-6 lg:grid-cols-3">
+              <Card className="p-5 lg:col-span-2">
+                <div className="mb-4 h-4 w-32 animate-pulse rounded bg-slate-200" />
+                <div className="flex h-[300px] items-end gap-2">
+                  {Array.from({ length: 12 }).map((_, i) => (
+                    <div
+                      key={i}
+                      className="w-full animate-pulse rounded-t bg-slate-200"
+                      style={{ height: `${40 + (i % 5) * 20}%` }}
+                    />
+                  ))}
+                </div>
+              </Card>
+              <Card className="p-5">
+                <div className="mb-4 h-4 w-24 animate-pulse rounded bg-slate-200" />
+                <div className="flex h-[300px] items-center justify-center">
+                  <div className="h-40 w-40 animate-pulse rounded-full bg-slate-200" />
+                </div>
+              </Card>
+            </div>
+            <Card className="p-5">
+              <div className="mb-4 h-4 w-40 animate-pulse rounded bg-slate-200" />
+              <div className="flex h-[300px] items-end gap-3">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="flex-1 animate-pulse rounded-t bg-slate-200"
+                    style={{ height: `${30 + i * 15}%` }}
+                  />
+                ))}
+              </div>
+            </Card>
+          </>
+        ) : analytics ? (
+          <>
+            {analytics.demo_data && (
+              <p className="text-xs text-slate-400">Demo data — connect a live database for real analytics</p>
+            )}
+            <div className="grid gap-6 lg:grid-cols-3">
+              {/* Revenue over time */}
+              <Card className="p-5 lg:col-span-2">
+                <h3 className="mb-4 text-sm font-semibold text-slate-700">Revenue Over Time</h3>
+                <ResponsiveContainer width="100%" height={300}>
+                  <AreaChart data={analytics.revenue_time_series}>
+                    <XAxis dataKey="date" tick={{ fontSize: 12 }} />
+                    <YAxis tick={{ fontSize: 12 }} />
+                    <Tooltip
+                      formatter={(value: any) => [
+                        `₹${Number(value).toLocaleString('en-IN')}`,
+                        'Revenue',
+                      ]}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="revenue"
+                      stroke="#3b82f6"
+                      fill="#93c5fd"
+                      strokeWidth={2}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </Card>
+
+              {/* Success rate */}
+              <Card className="p-5">
+                <h3 className="mb-4 text-sm font-semibold text-slate-700">Success Rate</h3>
+                <ResponsiveContainer width="100%" height={260}>
+                  <PieChart>
+                    <Pie
+                      data={[
+                        { name: 'Successful', value: analytics.success_rate },
+                        { name: 'Failed', value: Math.max(0, 1 - analytics.success_rate) },
+                      ]}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={80}
+                      paddingAngle={5}
+                      dataKey="value"
+                    >
+                      <Cell fill="#10b981" />
+                      <Cell fill="#ef4444" />
+                    </Pie>
+                    <Tooltip formatter={(value: any) => `${(value * 100).toFixed(0)}%`} />
+                  </PieChart>
+                </ResponsiveContainer>
+                <p className="mt-2 text-center text-2xl font-bold text-slate-900">
+                  {(analytics.success_rate * 100).toFixed(0)}%
+                </p>
+              </Card>
+            </div>
+
+            {/* Discount distribution */}
+            <Card className="p-5">
+              <h3 className="mb-4 text-sm font-semibold text-slate-700">Discount Distribution</h3>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={analytics.discount_distribution}>
+                  <XAxis dataKey="range" tick={{ fontSize: 12 }} />
+                  <YAxis tick={{ fontSize: 12 }} allowDecimals={false} />
+                  <Tooltip />
+                  <Bar dataKey="count" fill="#6366f1" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </Card>
+          </>
+        ) : null}
+      </section>
 
       {/* System Overview */}
       <Card className="mt-8">

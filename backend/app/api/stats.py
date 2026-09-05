@@ -1,6 +1,6 @@
 import csv
 import io
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import StreamingResponse
@@ -10,9 +10,92 @@ from app.database import get_db
 from app.models.order import Order
 from app.models.negotiation import Negotiation
 from app.models.user import User
-from app.services.auth_service import require_role
+from app.services.auth_service import require_role, get_current_user
 
 router = APIRouter()
+
+
+@router.get("/analytics")
+def analytics(
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    thirty_days_ago = datetime.now() - timedelta(days=30)
+
+    paid_orders = db.query(Order).filter(
+        Order.created_at >= thirty_days_ago,
+        Order.status == "paid",
+    ).all()
+    all_orders = db.query(Order).filter(
+        Order.created_at >= thirty_days_ago,
+    ).all()
+    negs = db.query(Negotiation).filter(
+        Negotiation.created_at >= thirty_days_ago,
+    ).all()
+
+    if not paid_orders and not all_orders and not negs:
+        today = datetime.now()
+        mock_ts = []
+        for i in range(30):
+            d = (today - timedelta(days=29 - i)).strftime("%Y-%m-%d")
+            mock_ts.append({
+                "date": d,
+                "revenue": round(3000 + ((i * 137) % 8000), 2),
+                "orders": (i % 4) + 1,
+            })
+        return {
+            "revenue_time_series": mock_ts,
+            "discount_distribution": [
+                {"range": "0-5%", "count": 10},
+                {"range": "6-10%", "count": 8},
+                {"range": "11-15%", "count": 5},
+                {"range": "16-20%", "count": 2},
+                {"range": "21%+", "count": 1},
+            ],
+            "success_rate": 0.85,
+            "demo_data": True,
+        }
+
+    ts: dict[str, dict] = {}
+    for o in paid_orders:
+        if o.created_at:
+            d = o.created_at.strftime("%Y-%m-%d")
+            ts.setdefault(d, {"date": d, "revenue": 0.0, "orders": 0})
+            ts[d]["revenue"] = round(ts[d]["revenue"] + float(o.amount), 2)
+            ts[d]["orders"] += 1
+
+    for o in all_orders:
+        if o.created_at:
+            d = o.created_at.strftime("%Y-%m-%d")
+            if d not in ts:
+                ts[d] = {"date": d, "revenue": 0.0, "orders": 0}
+
+    revenue_time_series = sorted(ts.values(), key=lambda x: x["date"])
+
+    buckets = {"0-5%": 0, "6-10%": 0, "11-15%": 0, "16-20%": 0, "21%+": 0}
+    for n in negs:
+        d = float(n.final_discount) * 100
+        if d <= 5:
+            buckets["0-5%"] += 1
+        elif d <= 10:
+            buckets["6-10%"] += 1
+        elif d <= 15:
+            buckets["11-15%"] += 1
+        elif d <= 20:
+            buckets["16-20%"] += 1
+        else:
+            buckets["21%+"] += 1
+
+    discount_distribution = [{"range": k, "count": v} for k, v in buckets.items()]
+
+    total = len(all_orders)
+    success_rate = round(len(paid_orders) / total, 2) if total else 0.0
+
+    return {
+        "revenue_time_series": revenue_time_series,
+        "discount_distribution": discount_distribution,
+        "success_rate": success_rate,
+    }
 
 
 @router.get("/advanced")
