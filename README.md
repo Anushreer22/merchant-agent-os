@@ -20,8 +20,10 @@ Merchant Agent OS solves this by treating AI agents as first-class participants 
 - **Hash-chained tamper-evident audit ledger** — every state change is recorded and linked
 - **Role-based access control** — buyer, merchant, and admin roles with JWT authentication
 - **Buyer trust scoring** — dynamic score based on successful and on-time transactions
+- **PDF invoice generation** — automatic invoice creation after payment capture
 - **Advanced analytics dashboard** — revenue time series, discount distribution, and success rate charts
 - **One-click full demo flow** — trigger the entire AI-to-AI pipeline with a single API call
+- **Demo reset** — restore demo data to a clean state with a single endpoint
 
 ## Architecture Overview
 
@@ -36,7 +38,7 @@ flowchart LR
     F -->|Rejected| G[Deal Terminated]
     E --> H[Razorpay\nPayment]
     H -->|webhook.captured| I[Webhook Processor\nHMAC + Idempotency]
-    I --> J[Order → Paid\nTrust Score Updated]
+    I --> J[Order → Paid\nTrust Score Updated\nPDF Invoice Generated]
     J --> K[Audit Ledger\nHash-chained Events]
     G --> K
     C --> K
@@ -47,7 +49,7 @@ flowchart LR
 3. If the discount is within auto-approval limits, an order is created via **Razorpay**.
 4. If the discount exceeds limits, the deal enters the **Human Approval Queue**.
 5. Once payment is initiated, Razorpay processes it and sends a signed webhook.
-6. The **Webhook Processor** verifies the HMAC signature, checks idempotency, updates the order status, and refreshes the buyer trust score.
+6. The **Webhook Processor** verifies the HMAC signature, checks idempotency, updates the order status, refreshes the buyer trust score, and generates a PDF invoice.
 7. Every state change is appended to the **Hash-chained Audit Ledger** for tamper-evident compliance.
 
 ## Tech Stack
@@ -61,6 +63,7 @@ flowchart LR
 | **AI / LLM** | OpenAI GPT-4o-mini (optional, for merchant intent extraction) |
 | **Auth** | JWT HS256 + bcrypt |
 | **Rate Limiting** | slowapi |
+| **PDF Generation** | ReportLab |
 | **Frontend Framework** | React 19 + TypeScript |
 | **Build Tool** | Vite |
 | **Styling** | Tailwind CSS 4 |
@@ -84,7 +87,7 @@ merchant-agent-os/
 │   │   ├── policy/              # Deterministic policy engine
 │   │   ├── schemas/             # Pydantic response schemas
 │   │   ├── scripts/             # seed_catalog.py (demo data)
-│   │   ├── services/            # Business logic (negotiation, approval, trust, etc.)
+│   │   ├── services/            # Business logic (negotiation, approval, trust, invoice, seed)
 │   │   ├── main.py              # FastAPI app entry point
 │   │   ├── config.py            # Pydantic settings
 │   │   └── database.py          # SQLAlchemy engine + session
@@ -144,7 +147,7 @@ source .venv/bin/activate # macOS / Linux
 pip install -r requirements.txt
 ```
 
-Create a `.env` file in `backend/` (copy from `.env.example` if available):
+Create a `.env` file in `backend/`:
 
 ```env
 DATABASE_URL=postgresql://merchant:merchant123@localhost:5435/merchant_agent_os
@@ -230,6 +233,8 @@ The frontend runs at `http://localhost:5173`.
 | `GET` | `/api/v1/audit/` | List audit events | Authenticated |
 | `GET` | `/api/v1/audit/verify` | Verify audit chain integrity | Authenticated |
 | `POST` | `/api/v1/demo/full-flow` | Run full demo pipeline | Authenticated |
+| `POST` | `/api/v1/demo/reset` | Reset demo data | admin |
+| `GET` | `/api/v1/orders/{order_id}/invoice` | Download PDF invoice | Authenticated |
 | `GET` | `/api/v1/health` | Health check | Public |
 | `GET` | `/api/v1/trust/` | Trust service endpoints | Authenticated |
 | `GET` | `/api/v1/orders` | Invoice / order endpoints | Authenticated |
@@ -348,9 +353,9 @@ Open `http://localhost:5173`, log in, and explore:
 - **Stat cards** showing platform metrics
 - **Analytics charts** — revenue over time, discount distribution, and success rate
 - **Approvals page** — see the auto-approved deal
-- **Orders / Payments** — see the paid order and payment link
+- **Orders / Payments** — see the paid order and download the PDF invoice
 
-## What Broke & How We Fixed It
+## What Broke & How I Fixed It
 
 ### Razorpay `reference_id` Length Limit
 
@@ -373,6 +378,3 @@ This ensures the `reference_id` passed to Razorpay stays within the 40-character
 ## License
 
 MIT — see the [LICENSE](LICENSE) file for details.
-</content>
-
-</content>
