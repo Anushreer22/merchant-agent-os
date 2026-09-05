@@ -53,6 +53,7 @@ def list_orders(skip: int = 0, limit: int = 50, db: Session = Depends(get_db),
             "currency": r.currency,
             "receipt": r.receipt,
             "status": r.status,
+            "invoice_url": r.invoice_url,
             "created_at": r.created_at,
         }
         for r in rows

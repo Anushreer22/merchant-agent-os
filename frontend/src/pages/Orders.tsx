@@ -48,6 +48,21 @@ function WebhookButton({ orderId, currentStatus }: { orderId: string; currentSta
   )
 }
 
+function InvoiceButton({ orderId, invoiceUrl }: { orderId: string; invoiceUrl: string | null }) {
+  if (!invoiceUrl) return null
+
+  return (
+    <a
+      href={`/api/v1/orders/${orderId}/invoice`}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="rounded-md bg-blue-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-blue-700 transition-colors"
+    >
+      Download Invoice
+    </a>
+  )
+}
+
 export function Orders() {
   const { data, isLoading, error } = useQuery({ queryKey: ['orders'], queryFn: fetchOrders })
   const navigate = useNavigate()
@@ -95,8 +110,9 @@ export function Orders() {
                     <td className="px-4 py-3 font-mono text-xs text-slate-500">{o.receipt}</td>
                     <td className="px-4 py-3"><Badge label={o.status} /></td>
                     <td className="px-4 py-3 text-slate-400 text-xs">{fmt(o.created_at)}</td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 flex flex-wrap gap-2">
                       <WebhookButton orderId={o.order_id} currentStatus={o.status} />
+                      <InvoiceButton orderId={o.order_id} invoiceUrl={o.invoice_url} />
                     </td>
                   </tr>
                 ))}

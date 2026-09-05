@@ -121,6 +121,7 @@ export interface Order {
   currency: string
   receipt: string
   status: string
+  invoice_url: string | null
   created_at: string
 }
 
@@ -207,3 +208,6 @@ export const simulateWebhook = (order_id: string) =>
 
 export const runFullDemo = () =>
   api.post('/demo/full-flow').then(r => r.data)
+
+export const runResetDemo = () =>
+  api.post('/demo/reset').then(r => r.data)

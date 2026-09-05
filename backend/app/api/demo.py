@@ -15,7 +15,8 @@ from app.services.approval_service import decide_approval
 from app.payments.payment_service import create_order_and_link
 from app.payments.webhook_service import process_webhook_event
 from app.services.trust_service import update_trust_score
-from app.services.auth_service import get_current_user
+from app.services.seed_service import seed_all
+from app.services.auth_service import get_current_user, require_role
 from app.config import settings
 
 router = APIRouter()
@@ -90,3 +91,12 @@ def run_full_demo(
         "final_status": "paid",
         "message": "Full demo flow completed successfully",
     }
+
+
+@router.post("/reset")
+def reset_demo(
+    db: Session = Depends(get_db),
+    _: User = Depends(require_role("admin")),
+):
+    seed_all(db)
+    return {"status": "reset", "message": "Demo data reset successfully"}

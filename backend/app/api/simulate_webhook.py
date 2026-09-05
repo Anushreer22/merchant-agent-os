@@ -8,10 +8,11 @@ from app.models.order import Order
 from app.models.negotiation import Negotiation
 from app.models.webhook_event import WebhookEvent
 from app.audit.ledger import append_audit_event
-from app.services.invoice_service import generate_invoice
+from app.services.invoice_service import generate_invoice_pdf
 from app.services.trust_service import update_trust_score_after_payment
 from app.services.notification_service import notify
 from app.models.buyer import Buyer
+from app.models.product import Product
 from app.services.trust_service import update_trust_score
 router = APIRouter()
 
@@ -30,22 +31,19 @@ def simulate_webhook(body: SimulateWebhookRequest, db: Session = Depends(get_db)
     event_id = f"evt_sim_{uuid.uuid4().hex[:16]}"
     order.status = "paid"
 
-    # Generate invoice
     neg = db.query(Negotiation).filter(
         Negotiation.negotiation_id == order.negotiation_id
     ).first()
-    order_data = {
-        "buyer_id": neg.buyer_id if neg else "—",
-        "product_id": neg.product_id if neg else "—",
-        "quantity": neg.quantity if neg else 1,
-        "discount": float(neg.final_discount) if neg else 0.0,
-        "amount": float(order.amount),
-        "currency": order.currency,
-        "status": "paid",
-    }
-    invoice_url = generate_invoice(body.order_id, order_data)
-    if invoice_url:
-        order.invoice_url = invoice_url
+    buyer = db.query(Buyer).filter(Buyer.buyer_id == neg.buyer_id).first() if neg else None
+    product = db.query(Product).filter(Product.product_id == neg.product_id).first() if neg else None
+
+    if neg and buyer and product:
+        try:
+            url = generate_invoice_pdf(db, order, neg, buyer, product)
+            if url:
+                order.invoice_url = url
+        except Exception:
+            pass
 
     webhook_row = WebhookEvent(
         event_id=event_id,
@@ -55,11 +53,8 @@ def simulate_webhook(body: SimulateWebhookRequest, db: Session = Depends(get_db)
     )
     db.add(webhook_row)
     db.commit()
-    # Update buyer trust score
-    negotiation = db.query(Negotiation).filter(Negotiation.negotiation_id == order.negotiation_id).first()
-    if negotiation:
-        buyer = db.query(Buyer).filter(Buyer.buyer_id == negotiation.buyer_id).first()
-        if buyer:
+    if negotiation := db.query(Negotiation).filter(Negotiation.negotiation_id == order.negotiation_id).first():
+        if buyer := db.query(Buyer).filter(Buyer.buyer_id == negotiation.buyer_id).first():
             buyer.total_transactions += 1
             buyer.successful_transactions += 1
             buyer.on_time_payments += 1
@@ -67,7 +62,6 @@ def simulate_webhook(body: SimulateWebhookRequest, db: Session = Depends(get_db)
             db.commit()
             update_trust_score(db, buyer.buyer_id)
 
-    # Update buyer trust score
     if neg:
         try:
             update_trust_score_after_payment(db, neg.buyer_id, success=True)
@@ -91,5 +85,5 @@ def simulate_webhook(body: SimulateWebhookRequest, db: Session = Depends(get_db)
         "status": "processed",
         "event_id": event_id,
         "order_id": body.order_id,
-        "invoice_url": invoice_url or None,
+        "invoice_url": order.invoice_url or None,
     }
